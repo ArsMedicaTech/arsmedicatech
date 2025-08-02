@@ -38,7 +38,7 @@ Resources:
       Schema:
         - Name: email
           AttributeDataType: String
-          Mutable: false
+          Mutable: true
           Required: true
         - Name: name
           AttributeDataType: String

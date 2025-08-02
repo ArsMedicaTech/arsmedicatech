@@ -237,9 +237,69 @@ class AuthService {
     };
   }
 
-  getFederatedSignInUrl(role: string): string {
-    // Returns the backend URL to initiate Cognito OAuth with the selected role
-    return `${API_URL}/auth/login/cognito?role=${encodeURIComponent(role)}`;
+  async checkUserExists(email: string): Promise<boolean> {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/users/exist?email=${encodeURIComponent(email)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return data.users_exist || false;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking if user exists:', error);
+      return false;
+    }
+  }
+
+  getFederatedSignInUrl(
+    role: string,
+    intent: 'signin' | 'signup' = 'signin'
+  ): string {
+    // Returns the backend URL to initiate Cognito OAuth with the selected role and intent
+    return `${API_URL}/auth/login/cognito?role=${encodeURIComponent(role)}&intent=${intent}`;
+  }
+
+  async handleCognitoCallback(): Promise<{
+    success: boolean;
+    data?: any;
+    error?: string;
+    suggestedAction?: string;
+  }> {
+    try {
+      // Get the current URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const error = urlParams.get('error');
+      const errorDescription = urlParams.get('error_description');
+
+      if (error) {
+        // Handle specific Cognito errors
+        if (
+          error === 'invalid_request' &&
+          errorDescription?.includes('email')
+        ) {
+          return {
+            success: false,
+            error: 'Email already exists',
+            suggestedAction: 'login',
+          };
+        }
+
+        return {
+          success: false,
+          error: errorDescription || error,
+        };
+      }
+
+      // If no error, the callback was successful
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Failed to process authentication callback',
+      };
+    }
   }
 }
 

@@ -100,7 +100,7 @@ const LoginForm = ({
   };
 
   const handleGoogleSignin = () => {
-    const url = authService.getFederatedSignInUrl('');
+    const url = authService.getFederatedSignInUrl('patient', 'signin');
     window.location.assign(url);
   };
 

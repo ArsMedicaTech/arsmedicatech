@@ -4,13 +4,13 @@ LLM Agent Endpoint
 import asyncio
 from typing import Any, Dict, Optional, Tuple
 
-from flask import jsonify, request, session, Response
+from flask import Response, jsonify, request, session
 
 from lib.data_types import UserID
 from lib.llm.agent import LLMAgent, LLMModel
+from lib.services.auth_decorators import get_current_user
 from lib.services.llm_chat_service import LLMChatService
 from lib.services.openai_security import get_openai_security_service
-from lib.services.auth_decorators import get_current_user
 from settings import MCP_URL, logger
 
 
@@ -75,13 +75,23 @@ def llm_agent_endpoint_route() -> Tuple[Response, int]:
             security_service.log_api_usage(str(current_user_id), str(LLMModel.GPT_4_1_NANO))
 
             # Add assistant response to persistent chat
-            chat = llm_chat_service.add_message(UserID(current_user_id), assistant_id, 'AI Assistant',
-                                                response.get('response', ''))
+            used_tools = response.get('used_tools', [])
+            chat = llm_chat_service.add_message(
+                UserID(current_user_id), 
+                assistant_id, 
+                'AI Assistant',
+                response.get('response', ''),
+                used_tools
+            )
 
             # Save updated agent state to session
             session['agent_data'] = agent.to_dict()
 
-            return jsonify(chat.to_dict()), 200
+            # Return chat data with tool usage information
+            chat_data = chat.to_dict()
+            chat_data['used_tools'] = response.get('used_tools', [])
+            
+            return jsonify(chat_data), 200
         else:
             return jsonify({"error": "Method not allowed"}), 405
     except Exception as e:

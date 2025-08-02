@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PatientType } from '../types';
+import EmailInput from './EmailInput';
+import PhoneInput from './PhoneInput';
 
 interface PatientFormModalProps {
   patient?: PatientType | null;
@@ -156,27 +158,19 @@ export function PatientFormModal({
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone</label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <PhoneInput
+            value={formData.phone}
+            onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+            label="Phone"
+            placeholder="Enter phone number"
+          />
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <EmailInput
+            value={formData.email}
+            onChange={(value) => setFormData(prev => ({ ...prev, email: value }))}
+            label="Email"
+            placeholder="Enter email address"
+          />
         </div>
 
         <div>

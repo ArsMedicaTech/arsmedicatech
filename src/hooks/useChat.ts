@@ -3,82 +3,121 @@ import apiService from '../services/api';
 import logger from '../services/logging';
 import { Conversation } from '../types';
 
-const DUMMY_CONVERSATIONS: Conversation[] = [
-  {
-    id: 1,
-    name: 'Jane Smith',
-    lastMessage: 'Sounds good!',
-    avatar: 'https://via.placeholder.com/40', // placeholder image if you like
-    messages: [
-      {
-        sender: 'Jane Smith',
-        text: 'Hi Dr. Carvolth, can we schedule an appointment?',
-      },
-      { sender: 'Me', text: 'Sure, does tomorrow at 3pm work?' },
-      { sender: 'Jane Smith', text: 'Sounds good!' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'John Doe',
-    lastMessage: 'Alright, thank you so much!',
-    avatar: 'https://via.placeholder.com/40',
-    messages: [
-      {
-        sender: 'John Doe',
-        text: 'Hello Dr. Carvolth, I have a question about my medication.',
-      },
-      { sender: 'Me', text: "Sure, what's on your mind?" },
-      { sender: 'John Doe', text: 'Should I continue at the same dose?' },
-      {
-        sender: 'Me',
-        text: 'Yes, please stay on the same dose until our next check-up.',
-      },
-      { sender: 'John Doe', text: 'Alright, thank you so much!' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Emily Johnson',
-    lastMessage: 'Will do, thanks!',
-    avatar: 'https://via.placeholder.com/40',
-    messages: [
-      {
-        sender: 'Emily Johnson',
-        text: 'Dr. Carvolth, when is my next appointment?',
-      },
-      { sender: 'Me', text: 'Next Tuesday at 2 PM, does that still work?' },
-      { sender: 'Emily Johnson', text: "Yes, that's perfect! Thank you!" },
-      { sender: 'Me', text: 'Great, see you then.' },
-      { sender: 'Emily Johnson', text: 'Will do, thanks!' },
-    ],
-  },
-];
-
 function useChat(isLLM = false) {
-  const [conversations, setConversations] =
-    useState<Conversation[]>(DUMMY_CONVERSATIONS);
+  // Initialize conversations from localStorage if available
+  const getInitialConversations = (): Conversation[] => {
+    try {
+      const stored = localStorage.getItem('chat-conversations');
+      const conversations = stored ? JSON.parse(stored) : [];
+      logger.debug('Loaded conversations from localStorage:', conversations);
+      return conversations;
+    } catch (error) {
+      console.error('Error loading conversations from localStorage:', error);
+      return [];
+    }
+  };
+
+  const [conversations, setConversations] = useState<Conversation[]>(
+    getInitialConversations
+  );
+  // Initialize selected conversation ID from localStorage if available
+  const getInitialSelectedId = (): number | string | null => {
+    try {
+      const stored = localStorage.getItem('chat-selected-conversation');
+      if (stored) {
+        const selectedId = JSON.parse(stored);
+        logger.debug(
+          'Loaded selected conversation ID from localStorage:',
+          selectedId
+        );
+        return selectedId;
+      }
+      // If no selected conversation stored, try to get the first conversation from localStorage
+      const conversationsStored = localStorage.getItem('chat-conversations');
+      if (conversationsStored) {
+        const conversations = JSON.parse(conversationsStored);
+        const firstId = conversations[0]?.id || null;
+        logger.debug('Using first conversation ID as selected:', firstId);
+        return firstId;
+      }
+      logger.debug('No conversations found in localStorage');
+      return null;
+    } catch (error) {
+      console.error(
+        'Error loading selected conversation from localStorage:',
+        error
+      );
+      return null;
+    }
+  };
+
   const [selectedConversationId, setSelectedConversationId] = useState<
     number | string | null
-  >(conversations[0]?.id || null);
+  >(getInitialSelectedId);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Debug: Log current conversations state
+  useEffect(() => {
+    logger.debug('Current conversations state:', conversations);
+    logger.debug('Current selected conversation ID:', selectedConversationId);
+  }, [conversations, selectedConversationId]);
+
+  // Save conversations to localStorage whenever they change
+  const saveConversationsToStorage = (conversations: Conversation[]) => {
+    try {
+      localStorage.setItem('chat-conversations', JSON.stringify(conversations));
+    } catch (error) {
+      console.error('Error saving conversations to localStorage:', error);
+    }
+  };
+
+  // Save selected conversation ID to localStorage
+  const saveSelectedConversationToStorage = (id: number | string | null) => {
+    try {
+      localStorage.setItem('chat-selected-conversation', JSON.stringify(id));
+    } catch (error) {
+      console.error(
+        'Error saving selected conversation to localStorage:',
+        error
+      );
+    }
+  };
+
   // Fetch conversations from the server
   useEffect(() => {
+    let isMounted = true;
+
     const fetchConversations = async () => {
       try {
-        let data;
+        let data: any;
+        let aiConversations: any[] = [];
+
         if (isLLM) {
           data = await apiService.getLLMChatHistory('ai-assistant');
         } else {
-          data = await apiService.getUserConversations();
+          // Fetch both user conversations and AI conversations
+          const [userConversations, llmChats] = await Promise.all([
+            apiService.getUserConversations(),
+            apiService.getLLMChatHistory('ai-assistant'),
+          ]);
+
+          data = userConversations;
+
+          // For multiple AI conversations, we don't automatically create one
+          // Users will create new AI conversations as needed
+          aiConversations = [];
         }
+
+        if (!isMounted) return;
+
         logger.debug('Fetched conversations:', data);
+        logger.debug('Fetched AI conversations:', aiConversations);
 
         // Transform the data to match the frontend format
+        let transformedData: any[] = [];
         if (data && Array.isArray(data)) {
-          const transformedData = data.map((conv: any) => ({
+          transformedData = data.map((conv: any) => ({
             id: conv.id,
             name: conv.name || 'Unknown User',
             lastMessage: conv.lastMessage || 'No messages yet',
@@ -88,31 +127,94 @@ function useChat(isLLM = false) {
             messages: conv.messages || [],
             isAI: conv.isAI || false,
           }));
-          setConversations(transformedData);
-          if (transformedData.length > 0 && !selectedConversationId) {
-            setSelectedConversationId(transformedData[0].id);
-          }
-        } else {
-          setConversations([]);
-          setSelectedConversationId(null);
         }
+
+        // Combine user conversations with AI conversations
+        const allConversations = [...aiConversations, ...transformedData];
+
+        if (!isMounted) return;
+
+        // Preserve existing messages when updating conversations
+        setConversations(prevConversations => {
+          logger.debug(
+            'Previous conversations from localStorage:',
+            prevConversations
+          );
+          logger.debug('New conversations from server:', allConversations);
+
+          // If we have conversations in localStorage but server returned empty, keep the localStorage ones
+          if (prevConversations.length > 0 && allConversations.length === 0) {
+            logger.debug('Keeping existing conversations from localStorage');
+            return prevConversations;
+          }
+
+          // Merge server conversations with localStorage conversations
+          const mergedConversations = [...prevConversations];
+
+          allConversations.forEach((newConv: any) => {
+            const existingIndex = mergedConversations.findIndex(
+              prev => prev.id === newConv.id
+            );
+
+            if (existingIndex >= 0) {
+              // Update existing conversation but preserve messages if they exist
+              const existingConv = mergedConversations[existingIndex];
+              mergedConversations[existingIndex] = {
+                ...newConv,
+                messages:
+                  existingConv.messages && existingConv.messages.length > 0
+                    ? existingConv.messages
+                    : newConv.messages,
+              };
+              logger.debug('Updated existing conversation:', newConv.id);
+            } else {
+              // Add new conversation from server
+              mergedConversations.push(newConv);
+              logger.debug('Added new conversation from server:', newConv.id);
+            }
+          });
+
+          logger.debug('Final merged conversations:', mergedConversations);
+          saveConversationsToStorage(mergedConversations);
+          return mergedConversations;
+        });
+
+        // Only set selected conversation if none is currently selected
+        setSelectedConversationId(currentId => {
+          const newId =
+            !currentId && allConversations.length > 0
+              ? allConversations[0].id
+              : currentId;
+          saveSelectedConversationToStorage(newId);
+          return newId;
+        });
       } catch (error) {
         console.error('Error fetching conversations:', error);
-        // Fallback to empty array if fetch fails
-        setConversations([]);
-        setSelectedConversationId(null);
+        if (isMounted) {
+          // Fallback to empty array if fetch fails
+          saveConversationsToStorage([]);
+          setConversations([]);
+          saveSelectedConversationToStorage(null);
+          setSelectedConversationId(null);
+        }
       }
     };
 
     fetchConversations();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLLM]);
+  }, [isLLM]); // Only depend on isLLM to prevent infinite loops
 
   const selectedConversation = conversations.find(
     conv => conv.id === selectedConversationId
   );
 
   const handleSelectConversation = (id: number | string | null): void => {
+    saveSelectedConversationToStorage(id);
     setSelectedConversationId(id);
     setNewMessage('');
   };
@@ -128,9 +230,9 @@ function useChat(isLLM = false) {
       participantId
     );
 
-    // For database conversation IDs, we need to use the full ID string
-    // For AI conversations, we use a timestamp
-    const conversationId = isAI ? Date.now() : participantId;
+    // For AI conversations, generate a unique ID using timestamp
+    // For user conversations, use the participantId
+    const conversationId = isAI ? `ai-assistant-${Date.now()}` : participantId;
 
     logger.debug('Using conversation ID:', conversationId);
 
@@ -144,7 +246,12 @@ function useChat(isLLM = false) {
       isAI: isAI,
     };
 
-    setConversations(prev => [newConversation, ...prev]);
+    setConversations(prev => {
+      const updatedConversations = [newConversation, ...prev];
+      saveConversationsToStorage(updatedConversations);
+      return updatedConversations;
+    });
+    saveSelectedConversationToStorage(newConversation.id);
     setSelectedConversationId(newConversation.id);
     setNewMessage('');
   };
@@ -157,8 +264,11 @@ function useChat(isLLM = false) {
     try {
       if (isLLM) {
         // For LLM chat, send the message to the LLM endpoint using apiService
+        // Use the selected conversation ID for AI conversations
+        const conversationId =
+          selectedConversationId?.toString() || 'ai-assistant';
         const llmResponse = await apiService.sendLLMMessage(
-          'ai-assistant',
+          conversationId,
           newMessage
         );
         logger.debug('LLM Response:', llmResponse);
@@ -185,6 +295,7 @@ function useChat(isLLM = false) {
           return conv;
         });
 
+        saveConversationsToStorage(updatedConversations);
         setConversations(updatedConversations);
       } else {
         // For regular chat, add the message locally and send to server using apiService
@@ -199,6 +310,7 @@ function useChat(isLLM = false) {
           return conv;
         });
 
+        saveConversationsToStorage(updatedConversations);
         setConversations(updatedConversations);
 
         // Save to server
@@ -217,11 +329,46 @@ function useChat(isLLM = false) {
         }
         return conv;
       });
+      saveConversationsToStorage(updatedConversations);
       setConversations(updatedConversations);
     } finally {
       setIsLoading(false);
       setNewMessage('');
     }
+  };
+
+  // Debug function to clear localStorage (for testing)
+  const clearConversations = () => {
+    localStorage.removeItem('chat-conversations');
+    localStorage.removeItem('chat-selected-conversation');
+    setConversations([]);
+    setSelectedConversationId(null);
+    logger.debug('Cleared all conversations from localStorage');
+  };
+
+  // Debug function to add a test conversation (for testing)
+  const addTestConversation = () => {
+    const testConversation: Conversation = {
+      id: 'test-conversation-' + Date.now(),
+      name: 'Test Conversation',
+      lastMessage: 'This is a test conversation',
+      avatar: 'https://ui-avatars.com/api/?name=Test&background=random',
+      messages: [
+        { sender: 'Test User', text: 'Hello, this is a test message' },
+        { sender: 'Me', text: 'Hi there! This is a test response' },
+      ],
+      isAI: false,
+    };
+
+    setConversations(prev => {
+      const updated = [testConversation, ...prev];
+      saveConversationsToStorage(updated);
+      return updated;
+    });
+
+    saveSelectedConversationToStorage(testConversation.id);
+    setSelectedConversationId(testConversation.id);
+    logger.debug('Added test conversation:', testConversation);
   };
 
   return {
@@ -234,8 +381,10 @@ function useChat(isLLM = false) {
     handleSelectConversation,
     handleSend,
     createNewConversation,
+    clearConversations, // Export for debugging
+    addTestConversation, // Export for debugging
     isLoading,
   };
 }
 
-export { useChat, type Conversation };
+export { useChat };

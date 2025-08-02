@@ -15,7 +15,7 @@ export interface Conversation {
   name: string;
   lastMessage: string;
   avatar: string;
-  messages: { sender: string; text: string }[];
+  messages: { sender: string; text: string; usedTools?: string[] }[];
   participantId?: string;
   isAI?: boolean;
 }

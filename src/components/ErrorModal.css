@@ -1,0 +1,164 @@
+.error-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(2px);
+}
+
+.error-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.error-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem 1.5rem 0 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.error-modal-title {
+  margin: 0;
+  color: #dc2626;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  flex: 1;
+  padding-right: 1rem;
+}
+
+.error-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.error-modal-close:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.error-modal-body {
+  padding: 1.5rem;
+}
+
+.error-modal-description {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.error-modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 1rem;
+}
+
+.error-modal-action-button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 80px;
+}
+
+.error-modal-action-button:hover {
+  background: #1d4ed8;
+}
+
+.error-modal-action-button:active {
+  background: #1e40af;
+}
+
+.error-modal-dismiss-button {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 80px;
+}
+
+.error-modal-dismiss-button:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.error-modal-dismiss-button:active {
+  background: #d1d5db;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .error-modal {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .error-modal-header {
+    padding: 1rem 1rem 0 1rem;
+  }
+
+  .error-modal-body {
+    padding: 1rem;
+  }
+
+  .error-modal-footer {
+    padding: 0 1rem 1rem 1rem;
+    flex-direction: column;
+  }
+
+  .error-modal-action-button,
+  .error-modal-dismiss-button {
+    width: 100%;
+  }
+}

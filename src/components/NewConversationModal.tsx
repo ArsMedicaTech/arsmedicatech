@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import apiService from '../services/api';
+import { createErrorModalState } from './ErrorModal';
 import './NewConversationModal.css';
 
 interface NewConversationModalProps {
@@ -10,6 +11,7 @@ interface NewConversationModalProps {
     userId: string,
     userInfo?: { display_name: string; avatar: string }
   ) => void;
+  onShowError: (errorState: ReturnType<typeof createErrorModalState>) => void;
 }
 
 const NewConversationModal = ({
@@ -17,6 +19,7 @@ const NewConversationModal = ({
   onClose,
   onStartChatbot,
   onStartUserChat,
+  onShowError,
 }: NewConversationModalProps): JSX.Element | null => {
   const [selectedOption, setSelectedOption] = useState<
     'chatbot' | 'user' | null
@@ -71,8 +74,35 @@ const NewConversationModal = ({
     }
   };
 
-  const handleStartConversation = () => {
+  const checkOpenAIAPIKey = async (): Promise<boolean> => {
+    try {
+      const response = await apiService.getAPI('/settings');
+      if (response.success && response.settings) {
+        return response.settings.has_openai_api_key === true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking OpenAI API key:', error);
+      return false;
+    }
+  };
+
+  const handleStartConversation = async () => {
     if (selectedOption === 'chatbot') {
+      const hasAPIKey = await checkOpenAIAPIKey();
+
+      if (!hasAPIKey) {
+        onShowError(
+          createErrorModalState(
+            'OpenAI API Key Required',
+            'To use the AI Assistant, you need to configure your OpenAI API key in Settings. This key is required for AI-powered features and is stored securely.',
+            'settings'
+          )
+        );
+        onClose();
+        return;
+      }
+
       onStartChatbot();
       onClose();
     }

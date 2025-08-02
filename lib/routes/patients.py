@@ -341,4 +341,4 @@ def get_cache_stats_route() -> Tuple[Response, int]:
         return jsonify(stats), 200
     except Exception as e:
         logger.error(f"Error getting cache stats: {e}")
-        return jsonify({"error": f"Failed to get cache stats: {str(e)}"}), 500
+        return jsonify({"error": "An internal error has occurred."}), 500

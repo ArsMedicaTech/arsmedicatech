@@ -312,6 +312,7 @@ const Dashboard = () => {
     await authService.logout();
     setUser(null);
     logger.debug('User cleared from context');
+    window.location.href = '/';
   };
 
   const handleSetupAdmin = async () => {

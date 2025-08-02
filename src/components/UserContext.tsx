@@ -17,6 +17,7 @@ export interface User {
   role: string;
   max_organizations?: number;
   user_organizations?: number;
+  appointments?: number; // Optional, if needed
 }
 
 interface UserContextType {

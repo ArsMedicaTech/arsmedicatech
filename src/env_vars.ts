@@ -23,8 +23,11 @@ const LIVE_KIT_SERVER_URL = 'wss://demo.arsmedicatech.com';
 const GOOGLE_LOGO =
   'https://darrenmackenzie-chalice-bucket.s3.us-east-1.amazonaws.com/icons/Google_logo.svg';
 
+const DEBUG = process.env.NODE_ENV === 'development';
+
 export {
   API_URL,
+  DEBUG,
   GOOGLE_LOGO,
   LIVE_KIT_SERVER_URL,
   LIVE_KIT_TOKEN_URL,

@@ -87,7 +87,7 @@ class LLMChatService:
             chat.id = result.get('id')
         return chat
 
-    def add_message(self, user_id: UserID, assistant_id: str, sender: str, text: str) -> LLMChat:
+    def add_message(self, user_id: UserID, assistant_id: str, sender: str, text: str, used_tools: Optional[List[str]] = None) -> LLMChat:
         """
         Add a message to the LLM chat, creating the chat if needed
 
@@ -95,12 +95,13 @@ class LLMChatService:
         :param assistant_id: str - The ID of the assistant.
         :param sender: str - The sender of the message (e.g., 'user' or 'assistant').
         :param text: str - The content of the message.
+        :param used_tools: Optional list of tools used in this message.
         :return: LLMChat - The updated LLMChat object with the new message added.
         """
         chat = self.get_llm_chat(user_id, assistant_id)
         if not chat:
             chat = self.create_llm_chat(user_id, assistant_id)
-        chat.add_message(sender, text)
+        chat.add_message(sender, text, used_tools)
         # Save updated chat
         chat_id: str = chat.id or ""
         if not chat_id:

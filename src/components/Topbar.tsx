@@ -25,6 +25,7 @@ export default function Topbar(props: Props) {
     try {
       await authService.logout();
       setUser(null);
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -69,6 +70,7 @@ export default function Topbar(props: Props) {
             )}
           </div>
         </div>
+        <div className="release-info">Version 0.0.1 (alpha)</div>
       </header>
       <SignupPopup isOpen={isPopupOpen} onClose={hideSignupPopup} />
     </>

@@ -13,6 +13,7 @@ jest.mock('react-router-dom', () => ({
     element: routes[0].element,
   }),
   RouterProvider: ({ router }: { router: any }) => router.element,
+  useNavigate: () => jest.fn(),
 }));
 
 // Mock the UserContext
@@ -20,6 +21,30 @@ jest.mock('../components/UserContext', () => ({
   UserProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="user-provider">{children}</div>
   ),
+}));
+
+// Mock the NotificationContext
+jest.mock('../components/NotificationContext', () => ({
+  NotificationProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="notification-provider">{children}</div>
+  ),
+  useNotificationContext: () => ({
+    unreadCount: 0,
+    getRecentNotifications: () => [],
+    markAsRead: jest.fn(),
+    markAllAsRead: jest.fn(),
+    clearNotification: jest.fn(),
+    clearAllNotifications: jest.fn(),
+  }),
+}));
+
+// Mock the useSignupPopup hook
+jest.mock('../hooks/useSignupPopup', () => ({
+  useSignupPopup: () => ({
+    isPopupOpen: false,
+    showSignupPopup: jest.fn(),
+    hideSignupPopup: jest.fn(),
+  }),
 }));
 
 // Mock components that might cause issues in tests

@@ -1,9 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import ErrorModal from '../components/ErrorModal';
 import NewConversationModal from '../components/NewConversationModal';
 import { useNotificationContext } from '../components/NotificationContext';
 import NotificationTest from '../components/NotificationTest';
 import SignupPopup from '../components/SignupPopup';
-import { Conversation, useChat } from '../hooks/useChat';
+import ToolUsageModal from '../components/ToolUsageModal';
+import { DEBUG } from '../env_vars';
+import { useChat } from '../hooks/useChat';
 import useEvents from '../hooks/useEvents';
 import { useNewConversationModal } from '../hooks/useNewConversationModal';
 import { useSignupPopup } from '../hooks/useSignupPopup';
@@ -12,63 +16,29 @@ import authService from '../services/auth';
 import logger from '../services/logging';
 import './Messages.css';
 
-const DUMMY_CONVERSATIONS: Conversation[] = [
-  {
-    id: 1,
-    name: 'Jane Smith',
-    lastMessage: 'Sounds good!',
-    avatar: 'https://via.placeholder.com/40', // placeholder image if you like
-    messages: [
-      {
-        sender: 'Jane Smith',
-        text: 'Hi Dr. Carvolth, can we schedule an appointment?',
-      },
-      { sender: 'Me', text: 'Sure, does tomorrow at 3pm work?' },
-      { sender: 'Jane Smith', text: 'Sounds good!' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'John Doe',
-    lastMessage: 'Alright, thank you so much!',
-    avatar: 'https://via.placeholder.com/40',
-    messages: [
-      {
-        sender: 'John Doe',
-        text: 'Hello Dr. Carvolth, I have a question about my medication.',
-      },
-      { sender: 'Me', text: "Sure, what's on your mind?" },
-      { sender: 'John Doe', text: 'Should I continue at the same dose?' },
-      {
-        sender: 'Me',
-        text: 'Yes, please stay on the same dose until our next check-up.',
-      },
-      { sender: 'John Doe', text: 'Alright, thank you so much!' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Emily Johnson',
-    lastMessage: 'Will do, thanks!',
-    avatar: 'https://via.placeholder.com/40',
-    messages: [
-      {
-        sender: 'Emily Johnson',
-        text: 'Dr. Carvolth, when is my next appointment?',
-      },
-      { sender: 'Me', text: 'Next Tuesday at 2 PM, does that still work?' },
-      { sender: 'Emily Johnson', text: "Yes, that's perfect! Thank you!" },
-      { sender: 'Me', text: 'Great, see you then.' },
-      { sender: 'Emily Johnson', text: 'Will do, thanks!' },
-    ],
-  },
-];
+function truncateLastMsg(lastMessage: string, maxLength = 30): string {
+  if (lastMessage.length <= maxLength) return lastMessage;
+  return lastMessage.slice(0, maxLength) + '...';
+}
 
 const Messages = () => {
   logger.debug('Messages component rendering');
 
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [toolUsageModal, setToolUsageModal] = useState({
+    isOpen: false,
+    usedTools: [] as string[],
+  });
+
+  // Error modal state
+  const [errorModal, setErrorModal] = useState({
+    isOpen: false,
+    error: '',
+    description: '',
+    suggested_action: '' as string | undefined,
+  });
 
   // Check authentication status
   useEffect(() => {
@@ -79,10 +49,23 @@ const Messages = () => {
     };
     checkAuth();
   }, []);
+
+  const handleShowError = (errorState: {
+    isOpen: boolean;
+    error: string;
+    description: string;
+    suggested_action: string | undefined;
+  }) => {
+    setErrorModal(errorState);
+  };
+
+  const handleCloseErrorModal = () => {
+    setErrorModal(prev => ({ ...prev, isOpen: false }));
+  };
   const { isPopupOpen, showSignupPopup, hideSignupPopup } = useSignupPopup();
   const { isModalOpen, showModal, hideModal } = useNewConversationModal();
   const [selectedMessages, setSelectedMessages] = useState<
-    { sender: string; text: string }[]
+    { sender: string; text: string; usedTools?: string[] }[]
   >([]);
 
   logger.debug('Messages: isAuthenticated:', isAuthenticated);
@@ -102,15 +85,21 @@ const Messages = () => {
   const {
     conversations,
     setConversations,
-    selectedConversation,
     selectedConversationId,
     handleSelectConversation,
     newMessage,
     setNewMessage,
     handleSend,
     createNewConversation,
+    clearConversations,
+    addTestConversation,
     isLoading,
   } = useChat(false); // Default to regular chat, will be overridden per conversation
+
+  // Memoize selectedConversation to prevent unnecessary re-renders
+  const selectedConversation = useMemo(() => {
+    return conversations.find(conv => conv.id === selectedConversationId);
+  }, [conversations, selectedConversationId]);
 
   // Handle real-time notifications
   const handleNewMessage = useCallback(
@@ -155,11 +144,27 @@ const Messages = () => {
               const response = await apiService.getConversationMessages(
                 selectedConversationId.toString()
               );
-              setSelectedMessages(
-                (response.messages || []).map((msg: any) => ({
+              const fetchedMessages = (response.messages || []).map(
+                (msg: any) => ({
                   sender: msg.sender,
                   text: msg.text,
-                }))
+                })
+              );
+
+              // Update both selectedMessages and conversations state
+              setSelectedMessages(fetchedMessages);
+
+              // Update the conversation in the conversations state with the fetched messages
+              setConversations(prevConversations =>
+                prevConversations.map(conv => {
+                  if (conv.id === selectedConversationId) {
+                    return {
+                      ...conv,
+                      messages: fetchedMessages,
+                    };
+                  }
+                  return conv;
+                })
               );
             } catch (error) {
               console.error('Error refreshing messages:', error);
@@ -218,6 +223,8 @@ const Messages = () => {
 
   // Fetch messages when a conversation is selected
   useEffect(() => {
+    let isMounted = true;
+
     const fetchMessages = async () => {
       if (!selectedConversationId || !selectedConversation) return;
 
@@ -229,7 +236,9 @@ const Messages = () => {
 
       if (isDummyConversation) {
         // For dummy conversations, use the pre-loaded messages
-        setSelectedMessages(selectedConversation.messages);
+        if (isMounted) {
+          setSelectedMessages(selectedConversation.messages);
+        }
         return;
       }
 
@@ -239,38 +248,103 @@ const Messages = () => {
           const assistantId =
             selectedConversation.participantId || 'ai-assistant';
           const response = await apiService.getLLMChatHistory(assistantId);
-          setSelectedMessages(response.messages || []);
+          const fetchedMessages = response.messages || [];
+
+          if (isMounted) {
+            // Process messages to include tool usage information
+            const processedMessages = fetchedMessages.map((msg: any) => ({
+              sender: msg.sender,
+              text: msg.text,
+              usedTools: msg.usedTools || [],
+            }));
+
+            // Update both selectedMessages and conversations state
+            setSelectedMessages(processedMessages);
+
+            // Update the conversation in the conversations state with the fetched messages
+            setConversations(prevConversations =>
+              prevConversations.map(conv => {
+                if (conv.id === selectedConversationId) {
+                  return {
+                    ...conv,
+                    messages: processedMessages,
+                  };
+                }
+                return conv;
+              })
+            );
+          }
         } catch (error) {
           console.error('Error fetching LLM messages:', error);
-          setSelectedMessages([]);
+          if (isMounted) {
+            setSelectedMessages([]);
+          }
         }
         return;
       }
 
       // Only fetch from database for real conversations (string IDs)
       if (typeof selectedConversationId === 'string') {
+        // Check if this conversation has messages already loaded (like test conversations)
+        if (
+          selectedConversation.messages &&
+          selectedConversation.messages.length > 0
+        ) {
+          // Use the messages that are already in the conversation object
+          if (isMounted) {
+            setSelectedMessages(selectedConversation.messages);
+          }
+          return;
+        }
+
         try {
           const response = await apiService.getConversationMessages(
             selectedConversationId.toString()
           );
           // The backend returns { messages: [...] }
-          setSelectedMessages(
-            (response.messages || []).map((msg: any) => ({
-              sender: msg.sender,
-              text: msg.text,
-            }))
-          );
+          const fetchedMessages = (response.messages || []).map((msg: any) => ({
+            sender: msg.sender,
+            text: msg.text,
+          }));
+
+          if (isMounted) {
+            // Update both selectedMessages and conversations state
+            setSelectedMessages(fetchedMessages);
+
+            // Update the conversation in the conversations state with the fetched messages
+            setConversations(prevConversations =>
+              prevConversations.map(conv => {
+                if (conv.id === selectedConversationId) {
+                  return {
+                    ...conv,
+                    messages: fetchedMessages,
+                  };
+                }
+                return conv;
+              })
+            );
+          }
         } catch (error) {
           console.error('Error fetching messages:', error);
-          setSelectedMessages([]);
+          if (isMounted) {
+            setSelectedMessages([]);
+          }
         }
       } else {
         // For other cases, set empty messages
-        setSelectedMessages([]);
+        if (isMounted) {
+          setSelectedMessages([]);
+        }
       }
     };
+
     fetchMessages();
-  }, [selectedConversationId, selectedConversation]);
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedConversationId]); // Only depend on selectedConversationId to prevent circular dependencies
 
   const handleSendMessage = async () => {
     if (!isAuthenticated) {
@@ -278,25 +352,74 @@ const Messages = () => {
       return;
     }
 
-    // Check if this is an AI conversation or user-to-user conversation
-    if (selectedConversation?.isAI) {
-      // Use LLM chat for AI conversations
-      if (!newMessage.trim()) return;
-      try {
+    if (!newMessage.trim()) return;
+
+    setIsSendingMessage(true);
+
+    try {
+      // Check if this is an AI conversation or user-to-user conversation
+      if (selectedConversation?.isAI) {
+        // Use LLM chat for AI conversations
         const assistantId =
           selectedConversation.participantId || 'ai-assistant';
+
+        logger.debug('Sending LLM message:', {
+          assistantId,
+          prompt: newMessage,
+        });
+
         // Send message to LLM endpoint
-        await apiService.sendLLMMessage(assistantId, newMessage);
+        const sendResponse = await apiService.sendLLMMessage(
+          assistantId,
+          newMessage
+        );
+        logger.debug('LLM send response:', sendResponse);
+
         // Fetch updated LLM chat history for this assistant
         const response = await apiService.getLLMChatHistory(assistantId);
-        setSelectedMessages(response.messages || []);
-        setNewMessage('');
-      } catch (error) {
-        console.error('Error sending LLM message:', error);
+        const fetchedMessages = response.messages || [];
+        logger.debug('Fetched LLM messages:', fetchedMessages);
+
+        // Process messages to include tool usage information
+        const processedMessages = fetchedMessages.map((msg: any) => ({
+          sender: msg.sender,
+          text: msg.text,
+          usedTools: msg.usedTools || [],
+        }));
+
+        // Update both selectedMessages and conversations state
+        setSelectedMessages(processedMessages);
+
+        // Update the conversation in the conversations state with the fetched messages
+        setConversations(prevConversations =>
+          prevConversations.map(conv => {
+            if (conv.id === selectedConversationId) {
+              return {
+                ...conv,
+                messages: processedMessages,
+              };
+            }
+            return conv;
+          })
+        );
+      } else {
+        // Use regular chat for user-to-user conversations
+        await handleSendUserMessage();
       }
-    } else {
-      // Use regular chat for user-to-user conversations
-      handleSendUserMessage();
+
+      // Clear the input after successful send
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+
+      // Show user-friendly error message
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to send message';
+      alert(`Error: ${errorMessage}`);
+
+      // Don't clear the message input so user can try again
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -304,7 +427,6 @@ const Messages = () => {
     if (!newMessage.trim() || !selectedConversation) return;
 
     const messageText = newMessage;
-    setNewMessage(''); // Clear input immediately
 
     logger.debug(
       '[DEBUG] Sending user message to conversation:',
@@ -353,9 +475,9 @@ const Messages = () => {
   };
 
   const handleStartChatbot = () => {
-    // Create AI Assistant conversation
+    // Create AI Assistant conversation with unique ID
     createNewConversation(
-      'ai-assistant',
+      `ai-assistant-${Date.now()}`,
       'AI Assistant',
       'https://ui-avatars.com/api/?name=AI&background=random',
       true
@@ -444,13 +566,40 @@ const Messages = () => {
           <div className="conversations-list">
             <div className="conversation-list-header">
               <h3 className="conversation-list-title">Conversations</h3>
-              <button
-                className="new-conversation-button"
-                onClick={handleNewConversation}
-                title="Start new conversation"
-              >
-                <span className="button-icon">+</span>
-              </button>
+              <div className="conversation-header-buttons">
+                <button
+                  className="new-conversation-button"
+                  onClick={handleNewConversation}
+                  title="Start new conversation"
+                >
+                  <span className="button-icon">+</span>
+                </button>
+                {DEBUG && (
+                  <>
+                    <button
+                      className="debug-button"
+                      onClick={clearConversations}
+                      style={{ marginLeft: '10px', fontSize: '12px' }}
+                      title="Clear all conversations (debug)"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      className="debug-button"
+                      onClick={addTestConversation}
+                      style={{
+                        marginLeft: '5px',
+                        fontSize: '12px',
+                        backgroundColor: '#28a745',
+                        borderColor: '#28a745',
+                      }}
+                      title="Add test conversation (debug)"
+                    >
+                      Test
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             <ul>
               {conversations.length > 0 ? (
@@ -467,7 +616,9 @@ const Messages = () => {
                     <img className="avatar" src={conv.avatar} alt={conv.name} />
                     <div className="conversation-info">
                       <p className="conversation-name">{conv.name}</p>
-                      <p className="conversation-last">{conv.lastMessage}</p>
+                      <p className="conversation-last">
+                        {truncateLastMsg(conv.lastMessage)}
+                      </p>
                     </div>
                   </li>
                 ))
@@ -495,8 +646,28 @@ const Messages = () => {
                       key={index}
                       className={msg.sender === 'Me' ? 'message me' : 'message'}
                     >
-                      <div className="message-sender">{msg.sender}</div>
-                      <div className="message-text">{msg.text}</div>
+                      <div className="message-sender">
+                        {msg.sender}
+                        {msg.sender === 'AI Assistant' &&
+                          msg.usedTools &&
+                          msg.usedTools.length > 0 && (
+                            <button
+                              className="tool-debug-button"
+                              onClick={() =>
+                                setToolUsageModal({
+                                  isOpen: true,
+                                  usedTools: msg.usedTools || [],
+                                })
+                              }
+                              title="View tools used"
+                            >
+                              🔧
+                            </button>
+                          )}
+                      </div>
+                      <div className="message-text">
+                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      </div>
                     </div>
                   ))}
                   {isLoading && (
@@ -507,6 +678,12 @@ const Messages = () => {
                       </div>
                     </div>
                   )}
+                  {isSendingMessage && (
+                    <div className="message-sending-indicator">
+                      <div className="loading-spinner"></div>
+                      <span>Sending message...</span>
+                    </div>
+                  )}
                 </div>
                 <div className="message-input-container">
                   <input
@@ -515,17 +692,17 @@ const Messages = () => {
                     value={newMessage}
                     onChange={e => setNewMessage(e.target.value)}
                     onKeyPress={e => {
-                      if (e.key === 'Enter' && !isLoading) {
+                      if (e.key === 'Enter' && !isSendingMessage) {
                         handleSendMessage();
                       }
                     }}
-                    disabled={isLoading}
+                    disabled={isSendingMessage}
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={isLoading || !newMessage.trim()}
+                    disabled={isSendingMessage || !newMessage.trim()}
                   >
-                    {isLoading ? 'Sending...' : 'Send'}
+                    {isSendingMessage ? 'Sending...' : 'Send'}
                   </button>
                 </div>
               </>
@@ -539,7 +716,7 @@ const Messages = () => {
       )}
 
       {/* SSE Notification Test Component */}
-      <NotificationTest />
+      {DEBUG && <NotificationTest />}
 
       <SignupPopup isOpen={isPopupOpen} onClose={hideSignupPopup} />
       <NewConversationModal
@@ -547,6 +724,19 @@ const Messages = () => {
         onClose={hideModal}
         onStartChatbot={handleStartChatbot}
         onStartUserChat={handleStartUserChat}
+        onShowError={handleShowError}
+      />
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        error={errorModal.error}
+        description={errorModal.description}
+        suggested_action={errorModal.suggested_action}
+        onClose={handleCloseErrorModal}
+      />
+      <ToolUsageModal
+        isOpen={toolUsageModal.isOpen}
+        usedTools={toolUsageModal.usedTools}
+        onClose={() => setToolUsageModal({ isOpen: false, usedTools: [] })}
       />
     </>
   );

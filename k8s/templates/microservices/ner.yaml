@@ -1,3 +1,4 @@
+{{- if .Values.micro.ner.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata: { name: micro-ner, namespace: {{ .Values.namespace }} }
@@ -45,3 +46,4 @@ metadata: { name: micro-ner, namespace: {{ .Values.namespace }} }
 spec:
   selector: { app: micro-ner }
   ports: [ { port: 80, targetPort: 5000 } ]
+{{- end }}

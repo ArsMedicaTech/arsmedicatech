@@ -44,7 +44,17 @@ class ApiService {
     logger.debug('API request - Headers:', config.headers);
 
     try {
-      const response = await fetch(url, config);
+      // Add timeout for requests (30 seconds for LLM requests, 10 seconds for others)
+      const timeout = endpoint.includes('/llm_chat') ? 30000 : 10000;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const response = await fetch(url, {
+        ...config,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
       logger.debug('API request - Response status:', response.status);
 
       const data = await response.json();
@@ -63,6 +73,9 @@ class ApiService {
       return data;
     } catch (error) {
       console.error('API request failed:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
       throw error;
     }
   }

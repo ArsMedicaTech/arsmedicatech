@@ -67,15 +67,19 @@ class LLMChat:
             id=chat_id
         )
 
-    def add_message(self, sender: str, text: str) -> None:
+    def add_message(self, sender: str, text: str, used_tools: Optional[List[str]] = None) -> None:
         """
         Adds a new message to the chat session.
         :param sender: The sender of the message (e.g., 'user' or 'assistant').
         :param text: The text content of the message.
+        :param used_tools: Optional list of tools used in this message.
         :return: None
         """
-        self.messages.append({
+        message: Dict[str, Any] = {
             "sender": sender,
             "text": text,
             "timestamp": datetime.now(timezone.utc).isoformat()
-        }) 
+        }
+        if used_tools:
+            message["usedTools"] = used_tools
+        self.messages.append(message) 

@@ -36,7 +36,7 @@ const SignupPopup = ({
   };
 
   const handleGoogleSignup = () => {
-    const url = authService.getFederatedSignInUrl(role);
+    const url = authService.getFederatedSignInUrl(role, 'signup');
     window.location.assign(url);
   };
 

@@ -105,9 +105,8 @@ const UserNotes: React.FC<{
       }
     } catch (error) {
       console.error('Error saving note:', error);
-      alert(
-        `Error saving note: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      console.error('Error saving note:', error);
+      alert('An error occurred while saving the note. Please try again later.');
     } finally {
       setIsSaving(false);
     }

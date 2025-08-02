@@ -45,7 +45,59 @@ def cognito_login_route() -> Union[Tuple[Response, int], BaseResponse]:
     if error:
         decoded_description = parse.unquote(error_description or '')
         logger.warning("Cognito auth error: %s - %s", error, decoded_description)
-        return jsonify({'error': error, 'description': decoded_description}), 400
+        
+        # Get intent from state parameter for error handling
+        state = request.args.get('state', 'patient:signin')
+        if ':' in state:
+            _, intent = state.split(':', 1)
+        else:
+            intent = 'signin'  # Default to signin for backward compatibility
+        
+        # Handle specific Cognito errors
+        if error == 'invalid_request' and 'email' in decoded_description.lower():
+            # This is likely the "email cannot be updated" error
+            logger.info("User attempted to sign up with existing email in Cognito")
+            
+            # Only show email error for signup intent
+            if intent == 'signup':
+                # Redirect to frontend with error parameters
+                error_url = f"{APP_URL}?error=invalid_request&error_description={parse.quote('Email already exists. Please try signing in instead.')}&suggested_action=login&intent=signup"
+                return redirect(error_url)
+            else:
+                # For signin intent, this means the user exists in Cognito but there's a linking issue
+                # This typically happens when:
+                # 1. User was created via traditional registration (not Google)
+                # 2. User is trying to sign in with Google for the first time
+                # 3. Cognito can't link the accounts due to email-as-username configuration
+                error_url = f"{APP_URL}?error=invalid_request&error_description={parse.quote('This email is associated with a traditional account. Please sign in with your username and password instead.')}&suggested_action=home&intent=signin"
+                return redirect(error_url)
+        
+        # Handle other common Cognito errors
+        if error == 'access_denied':
+            error_url = f"{APP_URL}?error=access_denied&error_description={parse.quote('Access was denied. Please try again.')}&suggested_action=home"
+            return redirect(error_url)
+        
+        if error == 'server_error':
+            error_url = f"{APP_URL}?error=server_error&error_description={parse.quote('Authentication service is temporarily unavailable. Please try again later.')}&suggested_action=home"
+            return redirect(error_url)
+        
+        if error == 'temporarily_unavailable':
+            error_url = f"{APP_URL}?error=temporarily_unavailable&error_description={parse.quote('Authentication service is temporarily unavailable. Please try again later.')}&suggested_action=home"
+            return redirect(error_url)
+        
+        # Default error handling
+        # Whitelist of allowed error types
+        allowed_errors = {'invalid_request', 'access_denied', 'server_error', 'temporarily_unavailable'}
+        if error not in allowed_errors:
+            logger.warning("Unrecognized error type: %s", error)
+            error = 'unknown_error'
+            decoded_description = 'An unknown error occurred.'
+        
+        # Sanitize error_description
+        sanitized_description = parse.quote(decoded_description)
+        
+        error_url = f"{APP_URL}?error={error}&error_description={sanitized_description}&suggested_action=home"
+        return redirect(error_url)
 
     code = request.args.get('code')
 
@@ -105,8 +157,14 @@ def cognito_login_route() -> Union[Tuple[Response, int], BaseResponse]:
                 logger.error("Could not determine username from federated identity")
                 return jsonify({"error": "Unable to derive username"}), 500
 
-            # Get role from query param, default to 'patient'
-            role_from_query = request.args.get('role', 'patient')
+            # Get role and intent from state parameter
+            state = request.args.get('state', 'patient:signin')
+            if ':' in state:
+                role_from_query, intent = state.split(':', 1)
+            else:
+                # Fallback for backward compatibility
+                role_from_query = state
+                intent = 'signin'
 
             user_service = UserService()
             user_service.connect()
@@ -121,16 +179,30 @@ def cognito_login_route() -> Union[Tuple[Response, int], BaseResponse]:
                         password=random_password,
                         first_name="",
                         last_name="",
-                        role=role_from_query
+                        role=role_from_query,
+                        is_federated=True  # Mark as federated user
                     )
                     if not success or not user or not getattr(user, "id", None):
                         logger.error(f"Failed to create user from federated login: {message}")
                         return jsonify({'error': 'Failed to create user', 'message': message}), 500
                 else:
-                    # Optionally update user info if changed
-                    updates: Dict[str, Any] = {}
-                    if updates and user.id is not None:
-                        user_service.update_user(str(user.id), updates)
+                    # User exists in our database - check intent
+                    if intent == 'signup':
+                        # User tried to sign up but account already exists
+                        logger.info(f"User attempted to sign up with existing email: {email}")
+                        error_url = f"{APP_URL}?error=invalid_request&error_description={parse.quote('This email address is already registered. Please try signing in instead.')}&suggested_action=login&intent=signup"
+                        return redirect(error_url)
+                    else:
+                        # User is signing in with existing account - this is fine
+                        # Note: If Cognito is still returning "email cannot be updated" error,
+                        # it means the Cognito configuration needs to be updated to remove
+                        # UsernameAttributes: [email] from the User Pool configuration
+                        logger.info(f"Existing user logged in via federated identity: {email}")
+                        # Optionally update user info if changed
+                        updates: Dict[str, Any] = {}
+                        if updates and user.id is not None:
+                            user_service.update_user(str(user.id), updates)
+                
                 # Store user info in session (mimic other routes)
                 session['user_id'] = user.id
                 session['auth_token'] = tokens['id_token']
@@ -148,7 +220,11 @@ def cognito_login_route() -> Union[Tuple[Response, int], BaseResponse]:
                     expires_at=claims["exp"]
                 )
                 session.modified = True
-                return redirect(APP_URL)
+                
+                # Return a success response with token information for the frontend
+                # The frontend will handle storing the token in localStorage
+                success_url = f"{APP_URL}?auth_success=true&token={session_token}&user_id={user.id}&username={user.username}&role={role_from_query}"
+                return redirect(success_url)
             except Exception as e:
                 logger.error("Failed to create/update user in database: %s", e)
                 session['user'] = user_info

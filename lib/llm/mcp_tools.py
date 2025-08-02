@@ -46,12 +46,17 @@ async def fetch_mcp_tool_defs(mcp_url: str) -> Tuple[List[Dict[str, Any]], Dict[
     :return: A tuple containing a list of OpenAI tool definitions and a dictionary mapping tool names to their call functions.
     :rtype: tuple[list[dict], dict]
     """
-    async with Client(mcp_url) as c:
-        logger.debug('Fetching tools from MCP server:', mcp_url)
-        logger.debug(str(c.__dir__()))
-        #tools = (await c.tools.list()).tools   # dict[name → Tool]
-        tools = (await c.list_tools())  # [Tool]
-        logger.debug('tools', tools)
+    try:
+        async with Client(mcp_url) as c:
+            logger.debug('Fetching tools from MCP server:', mcp_url)
+            logger.debug(str(c.__dir__()))
+            #tools = (await c.tools.list()).tools   # dict[name → Tool]
+            tools = (await c.list_tools())  # [Tool]
+            logger.debug('tools', tools)
+    except Exception as e:
+        logger.error(f'Error connecting to MCP server at {mcp_url}: {e}')
+        logger.error('MCP server may not be running or accessible')
+        tools = []
 
     openai_defs: list[Dict[str, Any]] = []
     func_lookup: dict[str, Callable[..., Any]] = {}
