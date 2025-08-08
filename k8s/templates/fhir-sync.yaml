@@ -24,6 +24,8 @@ spec:
         ports:
         - name: grpc
           containerPort: 50051
+        - name: probe
+          containerPort: 8080
         env:
         - name: RUST_LOG
           value: "info,fhir_sync=debug"
