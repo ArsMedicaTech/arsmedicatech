@@ -52,4 +52,7 @@ spec:
   - name: grpc
     protocol: TCP
     port: 50051
-    targetPort: grpc
+    targetPort: 50051
+  - name: probe
+    port: 8081
+    targetPort: 8081
