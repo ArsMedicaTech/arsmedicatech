@@ -10,6 +10,13 @@ spec:
   template:
     metadata: { labels: { app: fhir-sync } }
     spec:
+      nodeSelector:
+        doks.digitalocean.com/node-pool: "{{ .Values.fhirSync.nodePool }}"
+      tolerations:
+        - key: "virtual-kubelet.io/provider"
+          operator: "Equal"
+          value: "runpod"
+          effect: "NoSchedule"
       containers:
       - name: server
         image: "{{ .Values.fhirSync.image.repository }}:{{ .Values.fhirSync.image.tag }}"
