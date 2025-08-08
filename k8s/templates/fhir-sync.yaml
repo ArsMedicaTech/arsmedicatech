@@ -30,13 +30,15 @@ spec:
         - name: RUST_LOG
           value: "info,fhir_sync=debug"
         livenessProbe:
-          exec:
-            command: ["/grpc_health_probe", "-addr=:50051"]
+          httpGet:
+            path: /grpc_health_probe
+            port: probe
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
-          exec:
-            command: ["/grpc_health_probe", "-addr=:50051"]
+          httpGet:
+            path: /grpc_health_probe
+            port: probe
           initialDelaySeconds: 5
           periodSeconds: 10
         resources:
