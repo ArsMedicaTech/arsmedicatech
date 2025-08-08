@@ -87,6 +87,9 @@ spec:
                 name: micro-bayesian
                 port:
                   number: 80
+    - host: fhir.arsmedicatech.com
+      http:
+        paths:
           - path: /grpc_health_probe
             pathType: Exact
             backend:
