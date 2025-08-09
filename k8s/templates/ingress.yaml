@@ -96,7 +96,7 @@ spec:
               service:
                 name: fhir-sync
                 port:
-                  name: probe # 8081 plain HTTP
+                  name: probe # 8080 plain HTTP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
