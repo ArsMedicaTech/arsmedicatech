@@ -44,9 +44,9 @@ spec:
               value: {{ .Values.oscar.env.timezone }}
           ports:
             - name: http
-              containerPort: {{ .Values.oscar.tomcat.port }}
+              containerPort: {{ .Values.oscar.tomcat.http }}
             - name: https
-              containerPort: {{ .Values.oscar.tomcat.httpsPort }}
+              containerPort: {{ .Values.oscar.tomcat.https }}
           volumeMounts:
             - name: oscar-documents
               mountPath: /var/lib/OscarDocument
@@ -57,7 +57,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /oscar/
-              port: {{ .Values.oscar.tomcat.port }}
+              port: {{ .Values.oscar.tomcat.http }}
             initialDelaySeconds: 120
             periodSeconds: 30
             timeoutSeconds: 10
@@ -65,7 +65,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /oscar/
-              port: {{ .Values.oscar.tomcat.port }}
+              port: {{ .Values.oscar.tomcat.http }}
             initialDelaySeconds: 120
             periodSeconds: 10
             timeoutSeconds: 5
@@ -88,10 +88,10 @@ metadata:
 spec:
   ports:
     - name: http
-      port: {{ .Values.oscar.ports.web }}
-      targetPort: {{ .Values.oscar.tomcat.port }}
+      port: {{ .Values.oscar.ports.http }}
+      targetPort: {{ .Values.oscar.tomcat.http }}
     - name: https
       port: {{ .Values.oscar.ports.https }}
-      targetPort: {{ .Values.oscar.tomcat.httpsPort }}
+      targetPort: {{ .Values.oscar.tomcat.https }}
   selector:
     app: oscar-web

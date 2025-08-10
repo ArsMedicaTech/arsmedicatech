@@ -12,31 +12,32 @@ spec:
     - Egress
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              name: {{ .Values.namespace }}
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: ingress-nginx
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: controller
       ports:
         - protocol: TCP
-          port: {{ .Values.oscar.ports.web }}
+          port: {{ .Values.oscar.tomcat.http }}
         - protocol: TCP
-          port: {{ .Values.oscar.ports.https }}
-    - from:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-      ports:
-        - protocol: TCP
-          port: {{ .Values.oscar.ports.web }}
-        - protocol: TCP
-          port: {{ .Values.oscar.ports.https }}
+          port: {{ .Values.oscar.tomcat.https }}
   egress:
     - to:
-        - podSelector:
-            matchLabels:
-              app: oscar-db
+      - podSelector:
+          matchLabels:
+            app: oscar-db
       ports:
         - protocol: TCP
           port: 3306
-    - to: []
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
       ports:
         - protocol: TCP
           port: 53
@@ -57,30 +58,27 @@ spec:
     - Egress
   ingress:
     - from:
-        - podSelector:
-            matchLabels:
-              app: oscar-web
+      - podSelector:
+          matchLabels:
+            app: oscar-web
       ports:
         - protocol: TCP
           port: 3306
     - from:
-        - podSelector:
-            matchLabels:
-              job-name: oscar-db-migrations
+      - podSelector:
+          matchLabels:
+            job-name: oscar-db-migrations
       ports:
         - protocol: TCP
           port: 3306
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: oscar-ingress
-      ports:
-        - protocol: TCP
-          port: {{ .Values.oscar.ports.web }}
-        - protocol: TCP
-          port: {{ .Values.oscar.ports.https }}
   egress:
-    - to: []
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+      - podSelector:
+          matchLabels:
+            k8s-app: kube-dns
       ports:
         - protocol: TCP
           port: 53

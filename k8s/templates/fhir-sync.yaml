@@ -1,0 +1,67 @@
+# --- Deployment -----------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fhir-sync
+  labels: { app: fhir-sync }
+spec:
+  replicas: {{ .Values.fhirSync.replicas }}
+  selector: { matchLabels: { app: fhir-sync } }
+  template:
+    metadata: { labels: { app: fhir-sync } }
+    spec:
+      nodeSelector:
+        doks.digitalocean.com/node-pool: "{{ .Values.fhirSync.nodePool }}"
+      tolerations:
+        - key: "virtual-kubelet.io/provider"
+          operator: "Equal"
+          value: "runpod"
+          effect: "NoSchedule"
+      containers:
+      - name: server
+        image: "{{ .Values.fhirSync.image.repository }}:{{ .Values.fhirSync.image.tag }}"
+        imagePullPolicy: "{{ .Values.fhirSync.image.pullPolicy }}"
+        ports:
+        - name: grpc
+          containerPort: 50051
+        - name: probe
+          containerPort: 8080
+        - name: webhooks
+          containerPort: 8081
+        env:
+        - name: RUST_LOG
+          value: "info,fhir_sync=debug"
+        livenessProbe:
+          httpGet:
+            path: /grpc_health_probe
+            port: probe
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /grpc_health_probe
+            port: probe
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests: { cpu: "100m", memory: "64Mi" }
+          limits:   { cpu: "500m", memory: "256Mi" }
+---
+# --- Cluster-internal Service --------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: fhir-sync
+spec:
+  selector: { app: fhir-sync }
+  ports:
+  - name: grpc
+    protocol: TCP
+    port: 50051
+    targetPort: 50051
+  - name: probe
+    port: 8080
+    targetPort: 8080
+  - name: webhooks
+    port: 8081
+    targetPort: 8081

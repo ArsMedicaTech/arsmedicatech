@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Values.ingressName }}
+  name: "{{ .Values.ingressName }}-http"
   namespace: {{ .Values.namespace }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-{{ .Values.namespace }}
@@ -12,7 +12,9 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [ {{ .Values.ingressName }}.{{ .Values.namespace }}.com ]
+    - hosts:
+      - {{ .Values.ingressName }}.{{ .Values.namespace }}.com
+      - "fhir.arsmedicatech.com"
       secretName: tls-{{ .Values.ingressName }}-{{ .Values.namespace }}
   rules:
     - host: {{ .Values.ingressName }}.{{ .Values.namespace }}.com
@@ -85,3 +87,56 @@ spec:
                 name: micro-bayesian
                 port:
                   number: 80
+    - host: fhir.arsmedicatech.com
+      http:
+        paths:
+          - path: /grpc_health_probe
+            pathType: Exact
+            backend:
+              service:
+                name: fhir-sync
+                port:
+                  name: probe # 8080 plain HTTP
+          - path: /webhooks
+            pathType: Prefix
+            backend:
+              service:
+                name: fhir-sync
+                port:
+                  name: webhooks # 8081 plain HTTP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "{{ .Values.ingressName }}-grpc"
+  namespace: {{ .Values.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-{{ .Values.namespace }}
+    
+    # ----- gRPC-specific annotations -----
+    # Tell NGINX that ALL locations under this host use gRPC
+    # (works because we expose only / – pathless – for gRPC)
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    
+    # For long-running calls / websockets
+    nginx.ingress.kubernetes.io/proxy-read-timeout:  "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout:  "3600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - "fhir.arsmedicatech.com"
+      secretName: tls-{{ .Values.ingressName }}-{{ .Values.namespace }}
+  rules:
+    - host: fhir.arsmedicatech.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fhir-sync
+                port:
+                  name: grpc # 50051, HTTP/2, TLS
