@@ -14,7 +14,12 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: {{ .Values.namespace }}
+              kubernetes.io/metadata.name: {{ .Values.namespace }}
+          podSelector:
+            matchLabels:
+              # This must match the labels on the Ingress Controller PODS themselves.
+              # 'app.kubernetes.io/component: controller' is a common label for NGINX.
+              app.kubernetes.io/component: controller
       ports:
         - protocol: TCP
           port: {{ .Values.oscar.tomcat.http }}
@@ -23,6 +28,9 @@ spec:
     - from:
         - ipBlock:
             cidr: 0.0.0.0/0
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespace }}
       ports:
         - protocol: TCP
           port: {{ .Values.oscar.tomcat.http }}
@@ -36,7 +44,13 @@ spec:
       ports:
         - protocol: TCP
           port: 3306
-    - to: []
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
       ports:
         - protocol: TCP
           port: 53
@@ -70,17 +84,14 @@ spec:
       ports:
         - protocol: TCP
           port: 3306
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: oscar-ingress
-      ports:
-        - protocol: TCP
-          port: {{ .Values.oscar.ports.web }}
-        - protocol: TCP
-          port: {{ .Values.oscar.ports.https }}
   egress:
-    - to: []
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
       ports:
         - protocol: TCP
           port: 53
