@@ -12,25 +12,12 @@ spec:
     - Egress
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.namespace }}
-          podSelector:
-            matchLabels:
-              # This must match the labels on the Ingress Controller PODS themselves.
-              # 'app.kubernetes.io/component: controller' is a common label for NGINX.
-              app.kubernetes.io/component: controller
-      ports:
-        - protocol: TCP
-          port: {{ .Values.oscar.tomcat.http }}
-        - protocol: TCP
-          port: {{ .Values.oscar.tomcat.https }}
-    - from:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.namespace }}
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: ingress-nginx
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: controller
       ports:
         - protocol: TCP
           port: {{ .Values.oscar.tomcat.http }}
@@ -38,9 +25,9 @@ spec:
           port: {{ .Values.oscar.tomcat.https }}
   egress:
     - to:
-        - podSelector:
-            matchLabels:
-              app: oscar-db
+      - podSelector:
+          matchLabels:
+            app: oscar-db
       ports:
         - protocol: TCP
           port: 3306
@@ -71,16 +58,16 @@ spec:
     - Egress
   ingress:
     - from:
-        - podSelector:
-            matchLabels:
-              app: oscar-web
+      - podSelector:
+          matchLabels:
+            app: oscar-web
       ports:
         - protocol: TCP
           port: 3306
     - from:
-        - podSelector:
-            matchLabels:
-              job-name: oscar-db-migrations
+      - podSelector:
+          matchLabels:
+            job-name: oscar-db-migrations
       ports:
         - protocol: TCP
           port: 3306
@@ -89,7 +76,7 @@ spec:
       - namespaceSelector:
           matchLabels:
             kubernetes.io/metadata.name: kube-system
-        podSelector:
+      - podSelector:
           matchLabels:
             k8s-app: kube-dns
       ports:
