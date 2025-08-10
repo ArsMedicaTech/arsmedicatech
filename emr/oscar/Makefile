@@ -34,3 +34,10 @@ k8s-auth:
 k8s-deploy:
 	kubectl create namespace $(NAMESPACE) || true
 	helm upgrade --install $(NAMESPACE) ../k8s --namespace $(NAMESPACE) -f ../k8s/values.yaml
+
+## Patches the ingress-nginx configmap to use forwarded headers
+k8s-patch:
+	@echo "--> Applying use-forwarded-headers to ingress-nginx ConfigMap..."
+	@kubectl patch configmap ingress-nginx-controller -n ingress-nginx --type merge -p '{"data":{"use-forwarded-headers":"true"}}'
+	@kubectl patch configmap ingress-nginx-controller -n ingress-nginx --type merge -p '{"data":{"use-proxy-protocol":"true"}}'
+	@kubectl patch service ingress-nginx-controller -n ingress-nginx -p '{"metadata":{"annotations":{"service.beta.kubernetes.io/do-loadbalancer-enable-proxy-protocol":"true"}}}'
