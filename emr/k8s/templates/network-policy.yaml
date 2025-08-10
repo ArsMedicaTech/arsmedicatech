@@ -17,17 +17,17 @@ spec:
               name: {{ .Values.namespace }}
       ports:
         - protocol: TCP
-          port: {{ .Values.oscar.ports.web }}
+          port: {{ .Values.oscar.tomcat.http }}
         - protocol: TCP
-          port: {{ .Values.oscar.ports.https }}
+          port: {{ .Values.oscar.tomcat.https }}
     - from:
         - ipBlock:
             cidr: 0.0.0.0/0
       ports:
         - protocol: TCP
-          port: {{ .Values.oscar.ports.web }}
+          port: {{ .Values.oscar.tomcat.http }}
         - protocol: TCP
-          port: {{ .Values.oscar.ports.https }}
+          port: {{ .Values.oscar.tomcat.https }}
   egress:
     - to:
         - podSelector:
