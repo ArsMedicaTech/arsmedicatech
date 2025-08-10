@@ -4,6 +4,7 @@ metadata:
   name: oscar-ingress
   namespace: {{ .Values.namespace }}
   annotations:
+    nginx.ingress.kubernetes.io/whitelist-source-range: "{{ .Values.networkPolicy.whitelist }}"
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}

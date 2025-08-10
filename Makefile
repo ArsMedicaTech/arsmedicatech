@@ -226,6 +226,20 @@ ner-test:
 
 
 
+# Reasoning Engine (Haskell)
+# Docker commands are in respective repository
+
+# Create S3 bucket for Ontologies...
+ontologies-s3-iam:
+	aws iam create-user --profile $(AWS_PROFILE) --region $(AWS_REGION) --user-name ontologies-s3-read-write | true
+	aws iam put-user-policy --profile $(AWS_PROFILE) --region $(AWS_REGION) --user-name ontologies-s3-read-write --policy-name OntologiesS3ReadWritePolicy --policy-document file://config/ontologies_s3_read_write_policy.json | true
+	aws iam create-access-key --user-name ontologies-s3-read-write
+
+ontologies-s3-create:
+	aws s3api create-bucket --profile $(AWS_PROFILE) --region $(AWS_REGION) --bucket $(ONTOLOGIES_S3_BUCKET) | true
+	aws s3api put-public-access-block --profile $(AWS_PROFILE) --region $(AWS_REGION) --bucket $(ONTOLOGIES_S3_BUCKET) --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true | true
+	aws s3api put-bucket-policy --profile $(AWS_PROFILE) --region $(AWS_REGION) --bucket $(ONTOLOGIES_S3_BUCKET) --policy file://config/ontologies_s3_bucket_policy.json | true
+
 
 
 

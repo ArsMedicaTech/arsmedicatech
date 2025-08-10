@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowWriteFromApp",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": ["arn:aws:iam::160751179089:user/ontologies-s3-read-write"]
+      },
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::arsmedicatech-ontologies/*"
+    },
+    {
+      "Sid": "AllowReadFromApp",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": ["arn:aws:iam::160751179089:user/ontologies-s3-read-write"]
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectAcl"
+      ],
+      "Resource": "arn:aws:s3:::arsmedicatech-ontologies/*"
+    }
+  ]
+}
