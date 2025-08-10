@@ -26,6 +26,8 @@ spec:
           containerPort: 50051
         - name: probe
           containerPort: 8080
+        - name: webhooks
+          containerPort: 8081
         env:
         - name: RUST_LOG
           value: "info,fhir_sync=debug"
@@ -60,3 +62,6 @@ spec:
   - name: probe
     port: 8080
     targetPort: 8080
+  - name: webhooks
+    port: 8081
+    targetPort: 8081

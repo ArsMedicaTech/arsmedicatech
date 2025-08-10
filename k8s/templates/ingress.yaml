@@ -97,6 +97,13 @@ spec:
                 name: fhir-sync
                 port:
                   name: probe # 8080 plain HTTP
+          - path: /webhooks
+            pathType: Prefix
+            backend:
+              service:
+                name: fhir-sync
+                port:
+                  name: webhooks # 8081 plain HTTP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
