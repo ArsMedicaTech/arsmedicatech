@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bayesian
+  labels:
+    app: bayesian
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bayesian
+  template:
+    metadata:
+      labels:
+        app: bayesian
+    spec:
+      nodeSelector:
+        doks.digitalocean.com/node-pool: "{{ .Values.micro.bayesian.nodePool }}"
+      imagePullSecrets:
+        - name: ecr-secret
+      containers:
+        - name: bayesian
+          image: "{{ .Values.micro.bayesian.image.repository }}:{{ .Values.micro.bayesian.image.tag }}"
+          imagePullPolicy: "{{ .Values.micro.bayesian.image.pullPolicy }}"
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 5
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1024Mi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bayesian
+spec:
+  selector:
+    app: bayesian
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
