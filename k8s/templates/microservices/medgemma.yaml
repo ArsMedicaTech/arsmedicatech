@@ -1,0 +1,119 @@
+{{- if .Values.micro.medgemma.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: medgemma-{{ .Values.micro.medgemma.modelSize | default "4b" }}
+  annotations:
+    runpod.io/gpu-product: "{{ .Values.micro.medgemma.gpuMemory }}" # e.g. 24 (GB (L4/RTX))
+    runpod.io/max-gpu-price: "{{ .Values.micro.medgemma.maxGpuPrice }}"          # $/hr
+    runpod.io/datacenter-ids: "{{ .Values.micro.medgemma.location }}" # e.g. us-east-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: medgemma-{{ .Values.micro.medgemma.modelSize | default "4b" }}
+  template:
+    metadata:
+      labels:
+        app: medgemma-{{ .Values.micro.medgemma.modelSize | default "4b" }}
+    spec:
+      nodeSelector:
+        type: virtual-kubelet
+      imagePullSecrets:
+        - name: ecr-secret
+      containers:
+        - name: medgemma
+          image: "{{ .Values.micro.medgemma.repository }}:{{ .Values.micro.medgemma.image.tag }}"
+          imagePullPolicy: "{{ .Values.micro.medgemma.image.pullPolicy }}"
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              nvidia.com/gpu: "1"
+            limits:
+              nvidia.com/gpu: "1"
+          env:
+            - name: MODEL_NAME
+              value: google/medgemma-{{ .Values.micro.medgemma.modelSize | default "4b" }}
+            - name: TRANSFORMERS_CACHE
+              value: /models/huggingface
+            - name: HF_HOME
+              value: /models/huggingface
+            - name: VLLM_CACHE_DIR
+              value: /models/vllm
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: huggingface-token
+                  key: token
+          command:
+            [ "python3" ]
+          args:
+            [
+              "-m",
+              "vllm.entrypoints.openai.api_server",
+              "--model", "{{ .Values.micro.medgemma.model }}",
+              "--quantization", "awq",
+              "--port", "8000"
+            ]
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: medgemma-model-cache
+      tolerations:
+        - key: "virtual-kubelet.io/provider"
+          operator: "Equal"
+          value: "runpod"
+          effect: "NoSchedule"
+        - key: "runpod-only"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: medgemma-{{ .Values.micro.medgemma.modelSize | default "4b" }}-service
+spec:
+  selector:
+    app: medgemma-{{ .Values.micro.medgemma.modelSize | default "4b" }}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: medgemma-{{ .Values.micro.medgemma.modelSize | default "4b" }}-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: medgemma-{{ .Values.micro.medgemma.modelSize | default "4b" }}
+  minReplicas: 1
+  maxReplicas: {{ .Values.micro.medgemma.maxReplicas | default 1 }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: medgemma-model-cache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: do-block-storage
+{{- end }}

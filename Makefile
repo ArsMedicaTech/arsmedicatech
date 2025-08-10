@@ -75,12 +75,16 @@ k8s-encryption-key:
 	@python3 -c "import secrets, string; print('ENCRYPTION_KEY=' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32)))"
 	kubectl create secret generic encryption-key --from-literal=ENCRYPTION_KEY=your_generated_key_here --namespace=$(NAMESPACE) || true
 
-SECRETS=--set surrealdb.secret.user=$(SURREALDB_USER) --set surrealdb.secret.pass=$(SURREALDB_PASS) --set migration-openai.apiKey=$(MIGRATION_OPENAI_API_KEY) --set cognito-secret.userPoolClientSecret=$(USER_POOL_CLIENT_SECRET)
+
+HF_SECRET=--set huggingface.token=$(HUGGINGFACE_TOKEN)
+SURREAL_SECRETS=--set surrealdb.secret.user=$(SURREALDB_USER) --set surrealdb.secret.pass=$(SURREALDB_PASS)
+SECRETS=$(SURREAL_SECRETS) $(HF_SECRET) --set migration-openai.apiKey=$(MIGRATION_OPENAI_API_KEY) --set cognito-secret.userPoolClientSecret=$(USER_POOL_CLIENT_SECRET)
 
 k8s-create-secrets:
 	kubectl create secret generic surreal-secret --from-literal=user=$(SURREALDB_USER) --from-literal=pass=$(SURREALDB_PASS) --namespace=$(NAMESPACE) || true
 	kubectl create secret generic migration-openai-secret --from-literal=apiKey=$(MIGRATION_OPENAI_API_KEY) --namespace=$(NAMESPACE) || true
 	kubectl create secret generic cognito-secret --from-literal=userPoolClientSecret=$(USER_POOL_CLIENT_SECRET) --namespace=$(NAMESPACE) || true
+	kubectl create secret generic huggingface-token --from-literal=token=$(HUGGINGFACE_TOKEN) --namespace=$(NAMESPACE) || true
 
 k8s-deploy: k8s-create-secrets
 	kubectl create namespace $(NAMESPACE) || true
@@ -240,6 +244,21 @@ ontologies-s3-create:
 	aws s3api put-public-access-block --profile $(AWS_PROFILE) --region $(AWS_REGION) --bucket $(ONTOLOGIES_S3_BUCKET) --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true | true
 	aws s3api put-bucket-policy --profile $(AWS_PROFILE) --region $(AWS_REGION) --bucket $(ONTOLOGIES_S3_BUCKET) --policy file://config/ontologies_s3_bucket_policy.json | true
 
+
+# MedGemma
+medgemma-docker-create:
+	aws ecr create-repository --repository-name $(MEDGEMMA_IMAGE) --region us-east-1 || true
+
+medgemma-docker:
+	docker build -t $(DOCKER_REGISTRY)/$(MEDGEMMA_IMAGE):$(MEDGEMMA_VERSION) -f Dockerfile.medgemma .
+	docker push $(DOCKER_REGISTRY)/$(MEDGEMMA_IMAGE):$(MEDGEMMA_VERSION)
+	kubectl rollout restart deployment $(MEDGEMMA_DEPLOYMENT) --namespace=$(NAMESPACE)
+
+
+runpod:
+	kubectl create ns kube-system || true
+	kubectl create secret generic runpod-api-secret -n kube-system --from-literal=RUNPOD_API_KEY=$(RUNPOD_API_KEY)
+	helm install runpod-kubelet oci://ghcr.io/bsvogler/helm/runpod-kubelet --namespace kube-system --set runpod.existingSecret=runpod-api-secret --set runpod.maxGpuPrice=$(MAX_GPU_PRICE)
 
 
 

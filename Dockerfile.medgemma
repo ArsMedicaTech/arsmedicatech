@@ -1,0 +1,30 @@
+# Base image with CUDA and Python
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+ARG MODEL_NAME="google/medgemma-4b"
+ENV MODEL_NAME=$MODEL_NAME
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y git python3-pip curl && apt-get clean
+
+# Install vLLM
+RUN pip install --upgrade pip
+RUN pip install "vllm[triton]"  # includes transformer engine
+
+# Optional: Install HF accelerate for local testing
+#RUN pip install accelerate
+
+# Set up cache and model
+ENV HF_HOME=/models/huggingface
+ENV TRANSFORMERS_CACHE=/models/huggingface
+ENV VLLM_CACHE_DIR=/models/vllm
+RUN mkdir -p $HF_HOME $VLLM_CACHE_DIR
+
+# Optional: pre-download weights
+#RUN python3 -c "from transformers import AutoTokenizer, AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('$MODEL_NAME', trust_remote_code=True)"
+
+# Expose inference port
+EXPOSE 8000
+
+# Launch vLLM
+CMD ["python3", "-m", "vllm.entrypoints.openai.api_server", "--model", $MODEL_NAME, "--quantization", "awq", "--port", "8000"]
