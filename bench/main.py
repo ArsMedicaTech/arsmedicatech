@@ -75,6 +75,21 @@ def contraindication_checker(drug_name: str) -> bool:
     return drug_name in contraindicated_drugs
 
 
+def do_call(prompt_context: str, mcq_item: MCQItem) -> None:
+    """
+    Do a single call to the system with the given MCQ item.
+    :param prompt_context: str
+    :param mcq_item: MCQItem
+    :return: None
+    """
+    prompt_to_send = format_prompt(prompt_context, mcq_item)
+    model_response = call_your_system(prompt_to_send, AMT_API_KEY)
+
+    print("MODEL RESPONSE", type(model_response), model_response)
+
+    benchmark_single_mcq(mcq_item, model_response)
+
+
 
 if __name__ == "__main__":
     # res = call_llm_chat(prompt="Hello, how are you?", openai_api_key=OPENAI_API_KEY, api_key=APT_API_KEY)
