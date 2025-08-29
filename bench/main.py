@@ -61,6 +61,9 @@ TEST_OPTIONS = {
     "E": "Digoxin"
 }
 
+TEST_ANSWER = "E"
+
+
 
 def contraindication_checker(drug_name: str) -> bool:
     """
