@@ -82,12 +82,15 @@ def call_your_system(prompt: str, api_key: str) -> Optional[Dict[str, str]]:
     try:
         response = call_llm_chat(prompt, openai_api_key=OPENAI_API_KEY, api_key=api_key)
         print(f"Response from your system: {response}")
-        # {'sender': 'AI Assistant', 'text': 'D', 'timestamp': '2025-08-14T15:56:02.729533+00:00', 'usedTools': ['rag']}
+        # {'sender': 'AI Assistant', 'text': 'D', 'timestamp': '2025-08-14T15:56:02.729533+00:00', 'used_tools': ['rag']}
         text = response.get('messages', [{}])[-1].get('text', '')
-        used_tools = response.get('messages', [{}])[-1].get('usedTools', [])
+        used_tools = response.get('messages', [{}])[-1].get('used_tools', [])
         print(f"Text: {text}")
         print(f"Used tools: {used_tools}")
-        return json.loads(text)
+        try:
+            return json.loads(text)
+        except:
+            return {"result": text}
     except Exception as e:
         print(f"Error calling your system: {e}")
         return None
