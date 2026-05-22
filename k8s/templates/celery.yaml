@@ -22,4 +22,4 @@ spec:
           command: ["celery"]
           args: ["-A", "celery_worker.celery_app", "worker", "--loglevel=info"]
           env:
-            {{ include "surrealdb.sharedEnv" . | indent 12 }}
+            {{- include "surrealdb.sharedEnv" . | nindent 12 }}

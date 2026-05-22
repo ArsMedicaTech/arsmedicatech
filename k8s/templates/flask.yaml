@@ -21,7 +21,7 @@ spec:
           image: "{{ .Values.flask.image.repository }}:{{ .Values.flask.image.tag }}"
           imagePullPolicy: "{{ .Values.flask.image.pullPolicy }}"
           env:
-            {{ include "surrealdb.sharedEnv" . | indent 10 }}
+            {{- include "surrealdb.sharedEnv" . | nindent 12 }}
             - name: VAULT_ADDR
               value: "http://vault.vault.svc.cluster.local:8200"
             - name: VAULT_AUTH_METHOD
@@ -30,6 +30,8 @@ spec:
               value: "amt-oss-backend-api"
             - name: SERVICE_NAME
               value: "amt-oss-backend-api"
+            - name: SENTRY_DSN
+              value: "{{ .Values.flask.sentryDsn }}"
           ports: [ { containerPort: 5000 } ]
 ---
 apiVersion: v1

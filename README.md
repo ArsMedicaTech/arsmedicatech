@@ -606,10 +606,8 @@ vault write auth/kubernetes/role/amt-oss-backend-api bound_service_account_names
 Success! Enabled the kv-v2 secrets engine at: secret/
 
 / $ vault kv put secret/my-app/database password="supersecret" host="localhost" port="5432"
-======= Secret Path =======
 secret/data/my-app/database
 
-======= Metadata =======
 Key                Value
 ---                -----
 created_time       2026-04-25T19:04:54.320292377Z
@@ -627,4 +625,31 @@ vault kv get secret/my-app/database
 
 # Get just one specific field
 vault kv get -field=password secret/my-app/database
+
+## MinIO
+
+```bash
+# Add the MinIO repo
+helm repo add minio-operator https://operator.min.io/
+helm repo update
+
+# Install the operator
+helm install minio-operator minio-operator/operator --namespace minio-operator --create-namespace
+
+# Then create a tenant via a values file
+helm install minio-tenant minio-operator/tenant --namespace minio-tenant --create-namespace -f minio-tenant-values.yaml
+```
+
+To test it:
+
+```bash
+kubectl port-forward svc/minio 9443:443 -n minio-tenant
+
+Invoke-WebRequest -Uri "https://dl.min.io/client/mc/release/windows-amd64/mc.exe" -OutFile "mc.exe"
+
+.\mc.exe alias set amt https://localhost:9443 admin supersecret --insecure
+.\mc.exe ls amt --insecure
+.\mc.exe cp test.txt amt/amt-uploads/test.txt --insecure
+
+Move-Item mc.exe C:\Windows\System32\mc.exe
 ```

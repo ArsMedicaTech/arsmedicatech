@@ -1,0 +1,43 @@
+# =============================================================================
+# minio-init-job.yaml
+#
+# One-time Job that creates the GlitchTip bucket in MinIO using the mc CLI.
+# Only needed if you're using the bundled MinIO subchart AND the
+# defaultBuckets option doesn't work in your environment.
+#
+# Run after MinIO is healthy:
+#   kubectl apply -f minio-init-job.yaml -n glitchtip
+# =============================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: glitchtip-minio-init
+  namespace: glitchtip
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mc alias set myminio http://glitchtip-minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+              mc mb --ignore-existing myminio/glitchtip
+              mc anonymous set download myminio/glitchtip
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: glitchtip-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: glitchtip-secrets
+                  key: AWS_SECRET_ACCESS_KEY
