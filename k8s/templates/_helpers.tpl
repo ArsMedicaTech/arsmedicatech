@@ -1,4 +1,4 @@
-{{- define "surrealdb.sharedEnv" }}
+{{- define "surrealdb.sharedEnv" -}}
 - name: COGNITO_DOMAIN
   value: "{{ .Values.auth.cognito.cognitoDomain }}"
 - name: USER_POOL_ID
@@ -20,8 +20,6 @@
   value: "{{ .Values.redis.host }}"
 - name: REDIS_PORT
   value: "{{ .Values.redis.port }}"
-- name: SENTRY_DSN
-  value: "{{ .Values.sentry.dsn }}"
 - name: SURREALDB_NAMESPACE
   value: "{{ .Values.surrealdb.namespace }}"
 - name: SURREALDB_DATABASE
