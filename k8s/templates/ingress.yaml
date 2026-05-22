@@ -95,23 +95,6 @@ spec:
                 name: bayesian
                 port:
                   number: 80
-    - host: fhir.arsmedicatech.com
-      http:
-        paths:
-          - path: /grpc_health_probe
-            pathType: Exact
-            backend:
-              service:
-                name: fhir-sync
-                port:
-                  name: probe # 8080 plain HTTP
-          - path: /webhooks
-            pathType: Prefix
-            backend:
-              service:
-                name: fhir-sync
-                port:
-                  name: webhooks # 8081 plain HTTP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
