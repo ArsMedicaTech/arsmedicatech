@@ -1,7 +1,7 @@
 """
 Utility code for interacting with the ArsMedicaTech API.
 """
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 import json
 
@@ -46,13 +46,27 @@ def provision_api_key(session_token: str) -> str:
         raise Exception(f"Error: {response.status_code}, {response.text}")
 
 
-def call_llm_chat(prompt: str, openai_api_key: str, api_key: str) -> Dict[str, str]:
+def call_llm_chat(prompt: str, openai_api_key: str, api_key: str, custom_mcp: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
     """
     Calls the LLM chat endpoint with the given prompt and API keys.
     :param prompt: The prompt to send to the LLM.
     :param openai_api_key: The OpenAI API key for the LLM service.
     :param api_key: The ArsMedicaTech API key for authentication.
     :return:
+
+    {
+      "prompt": "Your question here",
+      "mcp_config": {
+        "mcpServers": {
+          "custom_server": {
+            "url": "http://localhost:9002/mcp"
+          },
+          "evidence_based_tooling": {
+            "url": "http://custom-url:9000/mcp"
+          }
+        }
+      }
+    }
     """
     url = f"{API_URL}/api/llm_chat"
     headers = {
@@ -64,6 +78,9 @@ def call_llm_chat(prompt: str, openai_api_key: str, api_key: str) -> Dict[str, s
         "openai_api_key": openai_api_key,
         #"response_format": MCQQuestionResponse.schema(),
     }
+
+    if custom_mcp is not None:
+        data["mcp_config"] = custom_mcp
 
     response = requests.post(url, headers=headers, json=data)
 
@@ -94,3 +111,23 @@ def call_your_system(prompt: str, api_key: str) -> Optional[Dict[str, str]]:
     except Exception as e:
         print(f"Error calling your system: {e}")
         return None
+
+
+def call_llm_chat_with_custom_mcp(prompt: str, openai_api_key: str, api_key: str) -> Dict[str, str]:
+    """
+    Calls the LLM chat endpoint with a custom MCP configuration.
+    :param prompt: The prompt to send to the LLM.
+    :param openai_api_key: The OpenAI API key for the LLM service.
+    :param api_key: The ArsMedicaTech API key for authentication.
+    :return:
+    """
+    custom_mcp = {
+        "mcpServers": {
+            "coaching_mcp": {
+                "url": "http://localhost:9005/mcp"
+            }
+        }
+    }
+
+    return call_llm_chat(prompt, openai_api_key, api_key, custom_mcp)
+
