@@ -537,3 +537,94 @@ flowchart LR
 * Application type: Web application
 * Authorized redirect URIs: (e.g., https://yourdomain.com/callback)
 * Save and copy the Client ID and Client Secret.
+
+## Vault
+
+```bash
+helm repo add hashicorp https://helm.releases.hashicorp.com
+helm install vault hashicorp/vault --namespace vault --create-namespace --set "server.ha.enabled=true" --set "server.ha.replicas=3" --set "server.ha.raft.enabled=true"
+```
+
+### Configure Vault's Kubernetes auth
+
+```bash
+# Check pod status first — they'll be in 0/1 Not Ready until initialized
+kubectl get pods -n vault
+
+# Open a shell in the first vault pod
+kubectl exec -it vault-0 -n vault -- /bin/sh
+
+# Initialize Vault (first time only — generates unseal keys + root token)
+vault operator init -key-shares=5 -key-threshold=3
+
+# SAVE THE OUTPUT. You get 5 unseal keys and 1 root token. Store these securely.
+
+# Unseal vault-0 (run this 3 times with 3 different keys)
+vault operator unseal <Key1>
+vault operator unseal <Key2>
+vault operator unseal <Key3>
+
+# Log in with root token
+vault login <RootToken>
+
+# Enable the Kubernetes auth method
+vault auth enable kubernetes
+
+# Configure it to talk to your cluster's API server
+vault write auth/kubernetes/config kubernetes_host="https://kubernetes.default.svc" kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+# Create a policy for ESO
+vault policy write eso-read - <<EOF
+path "secret/data/*" {
+  capabilities = ["read"]
+}
+EOF
+
+# Create a role that binds the ESO service account to that policy
+vault write auth/kubernetes/role/eso bound_service_account_names=external-secrets bound_service_account_namespaces=external-secrets policies=eso-read ttl=1h
+```
+
+And then:
+
+```bash
+vault policy write amt-oss-backend-api - <<EOF
+path "secret/data/amt-oss-backend-api/*" {
+  capabilities = ["read"]
+}
+path "database/creds/amt-oss-backend-api-db-role" {
+  capabilities = ["read"]
+}
+EOF
+
+vault write auth/kubernetes/role/amt-oss-backend-api bound_service_account_names=amt-oss-backend-api bound_service_account_namespaces=arsmedicatech-oss policies=amt-oss-backend-api ttl=1h
+```
+
+### Adding Secrets
+
+```bash
+/ $ vault secrets enable -path=secret kv-v2
+Success! Enabled the kv-v2 secrets engine at: secret/
+
+/ $ vault kv put secret/my-app/database password="supersecret" host="localhost" port="5432"
+======= Secret Path =======
+secret/data/my-app/database
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2026-04-25T19:04:54.320292377Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+```
+
+### Pull a Specific Value
+
+```bash
+# Get the whole secret (all keys at that path)
+vault kv get secret/my-app/database
+
+# Get just one specific field
+vault kv get -field=password secret/my-app/database
+```
