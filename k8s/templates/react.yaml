@@ -20,7 +20,7 @@ spec:
             - name: NODE_ENV
               value: "{{ .Values.react.nodeEnv }}"
             - name: SENTRY_DSN
-              value: "{{ .Values.sentry.dsn }}"
+              value: "{{ .Values.react.sentryDsn }}"
 ---
 apiVersion: v1
 kind: Service

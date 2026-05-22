@@ -20,7 +20,9 @@ spec:
           image: "{{ .Values.flask.image.repository }}:{{ .Values.flask.image.tag }}"
           imagePullPolicy: "{{ .Values.flask.image.pullPolicy }}"
           env:
-            {{ include "surrealdb.sharedEnv" . | indent 10 }}
+            {{- include "surrealdb.sharedEnv" . | nindent 12 }}
+            - name: SENTRY_DSN
+              value: "{{ .Values.flask.sentryDsn }}"
           ports: [ { containerPort: 5000 } ]
 ---
 apiVersion: v1
