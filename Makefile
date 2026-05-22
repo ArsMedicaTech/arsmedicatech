@@ -70,6 +70,10 @@ k8s-init:
 k8s-auth:
 	kubectl create secret docker-registry ecr-secret --docker-server=$(DOCKER_REGISTRY) --docker-username=AWS --docker-password=$(DOCKER_PASSWORD) --namespace=$(NAMESPACE)
 
+k8s-auth-del:
+	kubectl delete secret ecr-secret --namespace=$(NAMESPACE)
+
+
 k8s-encryption-key:
 	@echo "Generating encryption key..."
 	@python3 -c "import secrets, string; print('ENCRYPTION_KEY=' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32)))"
