@@ -52,4 +52,19 @@
     secretKeyRef:
       name: encryption-key
       key: ENCRYPTION_KEY
+- name: KEYCLOAK_CLIENT_ID
+  value: "{{ .Values.auth.keycloak.clientId }}"
+- name: KEYCLOAK_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: keycloak-secret
+      key: clientSecret
+- name: KEYCLOAK_REALM
+  value: "{{ .Values.auth.keycloak.realm }}"
+- name: KEYCLOAK_AUTH_HOST
+  value: "{{ .Values.auth.keycloak.authHost }}"
+- name: CORS_ORIGINS
+  value: "{{ .Values.flask.corsOrigins | join "," }}"
+- name: FRONTEND_REDIRECT
+  value: "{{ .Values.flask.frontendRedirect }}"
 {{- end }}

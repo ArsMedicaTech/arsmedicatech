@@ -81,6 +81,7 @@ k8s-create-secrets:
 	kubectl create secret generic surreal-secret --from-literal=user=$(SURREALDB_USER) --from-literal=pass=$(SURREALDB_PASS) --namespace=$(NAMESPACE) || true
 	kubectl create secret generic migration-openai-secret --from-literal=apiKey=$(MIGRATION_OPENAI_API_KEY) --namespace=$(NAMESPACE) || true
 	kubectl create secret generic cognito-secret --from-literal=userPoolClientSecret=$(USER_POOL_CLIENT_SECRET) --namespace=$(NAMESPACE) || true
+	kubectl create secret generic keycloak-secret --from-literal=clientSecret=$(KEYCLOAK_CLIENT_SECRET) --namespace=$(NAMESPACE) || true
 
 k8s-deploy: k8s-create-secrets
 	kubectl create namespace $(NAMESPACE) || true
@@ -89,6 +90,15 @@ k8s-deploy: k8s-create-secrets
 k8s-debug:
 	kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 	helm template $(NAMESPACE) ./k8s -f ./k8s/values.yaml | kubectl apply --namespace $(NAMESPACE) -f - --dry-run=server
+
+
+k8s-keycloak:
+	helm upgrade --install keycloak oci://registry-1.docker.io/bitnamicharts/keycloak -f config/keycloak/values.yaml --namespace auth
+
+k8s-keycloak-creds:
+	@echo Username: admin
+	@echo -n "Password: "
+	@kubectl get secret --namespace auth keycloak -o jsonpath="{.data.admin-password}" | python -c "import sys, base64; print(base64.b64decode(sys.stdin.read()).decode())"
 
 
 # Tests
