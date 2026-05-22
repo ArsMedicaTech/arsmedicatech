@@ -76,20 +76,23 @@ k8s-auth-del:
 
 k8s-encryption-key:
 	@echo "Generating encryption key..."
-	@python3 -c "import secrets, string; print('ENCRYPTION_KEY=' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32)))"
+	@python -c "import secrets, string; print('ENCRYPTION_KEY=' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32)))"
 	kubectl create secret generic encryption-key --from-literal=ENCRYPTION_KEY=your_generated_key_here --namespace=$(NAMESPACE) || true
 
-SECRETS=--set surrealdb.secret.user=$(SURREALDB_USER) --set surrealdb.secret.pass=$(SURREALDB_PASS) --set migration-openai.apiKey=$(MIGRATION_OPENAI_API_KEY) --set cognito-secret.userPoolClientSecret=$(USER_POOL_CLIENT_SECRET)
+SURREALDB_SECRETS=--set surrealdb.secret.user=$(SURREALDB_USER) --set surrealdb.secret.pass=$(SURREALDB_PASS)
+AUTH_SECRETS=--set cognito-secret.userPoolClientSecret=$(USER_POOL_CLIENT_SECRET) --set keycloak-secret.clientSecret=$(KEYCLOAK_CLIENT_SECRET)
+SECRETS=$(SURREALDB_SECRETS) --set migration-openai.apiKey=$(MIGRATION_OPENAI_API_KEY) $(AUTH_SECRETS)
 
 k8s-create-secrets:
 	kubectl create secret generic surreal-secret --from-literal=user=$(SURREALDB_USER) --from-literal=pass=$(SURREALDB_PASS) --namespace=$(NAMESPACE) || true
+	kubectl create secret generic minio-secret --from-literal=accessKey=$(MINIO_ACCESS_KEY) --from-literal=secretKey=$(MINIO_SECRET_KEY) --namespace=$(NAMESPACE) || true
 	kubectl create secret generic migration-openai-secret --from-literal=apiKey=$(MIGRATION_OPENAI_API_KEY) --namespace=$(NAMESPACE) || true
 	kubectl create secret generic cognito-secret --from-literal=userPoolClientSecret=$(USER_POOL_CLIENT_SECRET) --namespace=$(NAMESPACE) || true
 	kubectl create secret generic keycloak-secret --from-literal=clientSecret=$(KEYCLOAK_CLIENT_SECRET) --namespace=$(NAMESPACE) || true
 
-k8s-deploy: k8s-create-secrets
-	kubectl create namespace $(NAMESPACE) || true
-	helm upgrade --install $(NAMESPACE) ./k8s --namespace $(NAMESPACE) $(SECRETS) -f ./k8s/values.yaml
+k8s-deploy:
+	kubectl create namespace $(NAMESPACE) || echo "Namespace $(NAMESPACE) already exists"
+	helm upgrade --install $(NAMESPACE) ./k8s --namespace $(NAMESPACE) $(SECRETS) -f ./k8s/values.yaml --timeout 20s
 
 k8s-debug:
 	kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
