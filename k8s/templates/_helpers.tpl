@@ -52,6 +52,20 @@
     secretKeyRef:
       name: encryption-key
       key: ENCRYPTION_KEY
+- name: MINIO_ENDPOINT
+  value: "{{ .Values.minio.endpoint }}"
+- name: MINIO_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: minio-secret
+      key: accessKey
+- name: MINIO_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      name: minio-secret
+      key: secretKey
+- name: MINIO_ENCOUNTER_RECORDINGS_BUCKET
+  value: "{{ .Values.minio.encounterRecordingsBucket }}"
 - name: KEYCLOAK_CLIENT_ID
   value: "{{ .Values.auth.keycloak.clientId }}"
 - name: KEYCLOAK_CLIENT_SECRET

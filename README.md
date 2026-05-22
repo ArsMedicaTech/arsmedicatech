@@ -537,3 +537,31 @@ flowchart LR
 * Application type: Web application
 * Authorized redirect URIs: (e.g., https://yourdomain.com/callback)
 * Save and copy the Client ID and Client Secret.
+
+## MinIO
+
+```bash
+# Add the MinIO repo
+helm repo add minio-operator https://operator.min.io/
+helm repo update
+
+# Install the operator
+helm install minio-operator minio-operator/operator --namespace minio-operator --create-namespace
+
+# Then create a tenant via a values file
+helm install minio-tenant minio-operator/tenant --namespace minio-tenant --create-namespace -f minio-tenant-values.yaml
+```
+
+To test it:
+
+```bash
+kubectl port-forward svc/minio 9443:443 -n minio-tenant
+
+Invoke-WebRequest -Uri "https://dl.min.io/client/mc/release/windows-amd64/mc.exe" -OutFile "mc.exe"
+
+.\mc.exe alias set amt https://localhost:9443 admin supersecret --insecure
+.\mc.exe ls amt --insecure
+.\mc.exe cp test.txt amt/amt-uploads/test.txt --insecure
+
+Move-Item mc.exe C:\Windows\System32\mc.exe
+```
