@@ -22,11 +22,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-      - {{ .Values.ingressName }}.{{ .Values.namespace }}.com
-      - "fhir.arsmedicatech.com"
+      - {{ .Values.host }}
       secretName: tls-{{ .Values.ingressName }}-{{ .Values.namespace }}
   rules:
-    - host: {{ .Values.ingressName }}.{{ .Values.namespace }}.com
+    - host: {{ .Values.host }}
       http:
         paths:
           - path: /api
@@ -65,7 +64,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: livekit
+                name: livekit-service
                 port:
                   number: 7880
           - path: /twirp
@@ -93,7 +92,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: micro-bayesian
+                name: bayesian
                 port:
                   number: 80
     - host: fhir.arsmedicatech.com
@@ -136,10 +135,6 @@ metadata:
     acme.cert-manager.io/http01-edit-in-place: "true"
 spec:
   ingressClassName: nginx
-  tls:
-    - hosts:
-        - "fhir.arsmedicatech.com"
-      secretName: tls-{{ .Values.ingressName }}-{{ .Values.namespace }}
   rules:
     - host: fhir.arsmedicatech.com
       http:

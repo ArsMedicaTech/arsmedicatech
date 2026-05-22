@@ -243,7 +243,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: livekit-cert
-  namespace: arsmedicatech
+  namespace: {{ .Values.namespace }}
 spec:
   secretName: livekit-tls
   dnsNames:

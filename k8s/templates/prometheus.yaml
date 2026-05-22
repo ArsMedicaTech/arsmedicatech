@@ -27,7 +27,7 @@ spec:
       app: flask-api
   namespaceSelector:
     matchNames:
-      - arsmedicatech
+      - {{ .Values.namespace }}
   endpoints:
     - port: metrics
       interval: 15s
