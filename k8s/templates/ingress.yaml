@@ -7,8 +7,17 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-{{ .Values.namespace }}
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600" # keep websockets alive
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
     nginx.ingress.kubernetes.io/websocket-services: livekit
+
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.synapticl.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, OPTIONS"
+
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+
+    nginx.ingress.kubernetes.io/no-tls-redirect-locations: "/.well-known/acme-challenge/"
 spec:
   ingressClassName: nginx
   tls:
@@ -112,17 +121,19 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-{{ .Values.namespace }}
-    
+
     # ----- gRPC-specific annotations -----
     # Tell NGINX that ALL locations under this host use gRPC
     # (works because we expose only / – pathless – for gRPC)
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
 
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    
+
     # For long-running calls / websockets
     nginx.ingress.kubernetes.io/proxy-read-timeout:  "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout:  "3600"
+
+    acme.cert-manager.io/http01-edit-in-place: "true"
 spec:
   ingressClassName: nginx
   tls:
