@@ -10,8 +10,8 @@ spec:
   template:
     metadata: { labels: { app: fhir-sync } }
     spec:
-      nodeSelector:
-        doks.digitalocean.com/node-pool: "{{ .Values.fhirSync.nodePool }}"
+      #nodeSelector:
+      #  doks.digitalocean.com/node-pool: "{{ .Values.fhirSync.nodePool }}"
       tolerations:
         - key: "virtual-kubelet.io/provider"
           operator: "Equal"
