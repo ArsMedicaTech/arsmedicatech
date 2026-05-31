@@ -60,4 +60,4 @@ spec:
           image: "{{ .Values.flask.image.repository }}:{{ .Values.flask.image.tag }}"
           command: ["python", "lib/migrations/setup_webhooks.py"]
           env:
-            {{ include "surrealdb.sharedEnv" . | indent 12 }}
+            {{- include "surrealdb.sharedEnv" . | nindent 12 }}
