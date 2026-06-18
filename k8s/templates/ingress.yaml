@@ -10,11 +10,6 @@ metadata:
 
     nginx.ingress.kubernetes.io/websocket-services: livekit
 
-    nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
-    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.synapticl.com"
-    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, OPTIONS"
-
     nginx.ingress.kubernetes.io/affinity: "cookie"
 
     nginx.ingress.kubernetes.io/no-tls-redirect-locations: "/.well-known/acme-challenge/"
