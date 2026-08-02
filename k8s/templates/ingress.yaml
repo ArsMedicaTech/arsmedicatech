@@ -48,6 +48,7 @@ spec:
                 name: mcp-server
                 port:
                   number: 9000
+          {{- if .Values.micro.livekit.enabled }}
           - path: /livekit
             pathType: Prefix
             backend:
@@ -69,6 +70,8 @@ spec:
                 name: livekit
                 port:
                   number: 7880
+          {{- end }}
+          {{- if .Values.micro.ner.enabled }}
           - path: /ner
             pathType: Prefix
             backend:
@@ -76,6 +79,8 @@ spec:
                 name: micro-ner
                 port:
                   number: 80
+          {{- end }}
+          {{- if .Values.micro.reasoningEngine.enabled }}
           - path: /reasoning
             pathType: Prefix
             backend:
@@ -83,6 +88,8 @@ spec:
                 name: reasoning-engine
                 port:
                   number: 80
+          {{- end }}
+          {{- if .Values.micro.bayesian.enabled }}
           - path: /bayesian
             pathType: Prefix
             backend:
@@ -90,7 +97,9 @@ spec:
                 name: bayesian
                 port:
                   number: 80
+          {{- end }}
 ---
+{{- if .Values.fhirSync.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -124,3 +133,4 @@ spec:
                 name: fhir-sync
                 port:
                   name: grpc # 50051, HTTP/2, TLS
+{{- end }}
