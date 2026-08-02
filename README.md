@@ -653,3 +653,39 @@ Invoke-WebRequest -Uri "https://dl.min.io/client/mc/release/windows-amd64/mc.exe
 
 Move-Item mc.exe C:\Windows\System32\mc.exe
 ```
+
+## ECR Secret Rotation
+
+```bash
+# 1. Create the user
+aws iam create-user --user-name ecr-secret-refresher
+
+# 2. Create and attach an inline policy — strictly GetAuthorizationToken only
+aws iam put-user-policy --user-name ecr-secret-refresher --policy-name ecr-get-token-only --policy-document file://config/ecr_policy.json
+
+# 3. Create access keys
+aws iam create-access-key --user-name ecr-secret-refresher
+```
+
+```bash
+# Login to GHCR (use a GitHub PAT with packages:write scope)
+echo ghp_XXXXXXXXXXXXXXXXX | docker login ghcr.io -u ghusername --password-stdin
+
+# Build from the arsmedicatech repo root
+docker build -t ghcr.io/ghusername/ecr-refresher:latest -f ecr_refresher.Dockerfile .
+
+# Push
+docker push ghcr.io/ghusername/ecr-refresher:latest
+
+# Make it public in GitHub: Settings → Packages → ecr-refresher → Change visibility → Public
+```
+
+```bash
+# First fill in your AWS credentials in the Secret at the top, then:
+kubectl apply -f ecr-secret-refresher.secrets.yaml
+kubectl apply -f ecr-secret-refresher.yaml
+
+# Trigger it immediately to fix the current ImagePullBackOff without waiting 6 hours:
+kubectl create job --from=cronjob/ecr-secret-refresher ecr-refresh-now -n kube-system
+kubectl logs -f job/ecr-refresh-now -n kube-system
+```
