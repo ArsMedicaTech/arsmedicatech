@@ -41,6 +41,7 @@ spec:
   selector: { app: flask-api }
   ports: [ { port: 80, targetPort: 5000 } ]
 ---
+{{- if .Values.migrations.webhooks.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -61,3 +62,4 @@ spec:
           command: ["python", "lib/migrations/setup_webhooks.py"]
           env:
             {{- include "surrealdb.sharedEnv" . | nindent 12 }}
+{{- end }}

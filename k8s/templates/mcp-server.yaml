@@ -32,6 +32,7 @@ spec:
   selector: { app: mcp-server }
   ports: [ { port: 80, targetPort: {{ .Values.mcp.port }} } ]
 ---
+{{- if .Values.migrations.vec.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -51,3 +52,4 @@ spec:
           command: ["python", "lib/migrations/vec.py"]
           env:
             {{- include "surrealdb.sharedEnv" . | nindent 12 }}
+{{- end }}
