@@ -1,13 +1,12 @@
 # --- Deployment -----------------------------------------------------------
+{{- if .Values.fhirSync.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fhir-sync
   labels: { app: fhir-sync }
 spec:
-  {{- if .Values.fhirSync.enabled }}
   replicas: {{ .Values.fhirSync.replicas | default 1 }}
-  {{- end }}
   selector: { matchLabels: { app: fhir-sync } }
   template:
     metadata: { labels: { app: fhir-sync } }
@@ -67,3 +66,4 @@ spec:
   - name: webhooks
     port: 8081
     targetPort: 8081
+{{- end }}
