@@ -1,3 +1,4 @@
+{{- if .Values.celery.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,3 +24,4 @@ spec:
           args: ["-A", "celery_worker.celery_app", "worker", "--loglevel=info"]
           env:
             {{- include "surrealdb.sharedEnv" . | nindent 12 }}
+{{- end }}

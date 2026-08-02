@@ -14,8 +14,10 @@ spec:
       labels:
         app: reasoning-engine
     spec:
+      {{- with .Values.micro.reasoningEngine.nodePool }}
       nodeSelector:
-        doks.digitalocean.com/node-pool: "{{ .Values.micro.reasoningEngine.nodePool }}"
+        doks.digitalocean.com/node-pool: {{ . | quote }}
+      {{- end }}
       imagePullSecrets:
         - name: ecr-secret
       containers:

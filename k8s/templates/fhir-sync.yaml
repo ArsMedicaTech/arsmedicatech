@@ -5,7 +5,9 @@ metadata:
   name: fhir-sync
   labels: { app: fhir-sync }
 spec:
-  replicas: {{ .Values.fhirSync.replicas }}
+  {{- if .Values.fhirSync.enabled }}
+  replicas: {{ .Values.fhirSync.replicas | default 1 }}
+  {{- end }}
   selector: { matchLabels: { app: fhir-sync } }
   template:
     metadata: { labels: { app: fhir-sync } }
