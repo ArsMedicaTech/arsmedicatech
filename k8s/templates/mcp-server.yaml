@@ -21,6 +21,8 @@ spec:
           imagePullPolicy: "{{ .Values.mcp.image.pullPolicy }}"
           env:
             {{- include "surrealdb.sharedEnv" . | nindent 12 }}
+            - name: SENTRY_DSN
+              value: "{{ .Values.mcp.sentryDsn }}"
           ports: [ { containerPort: {{ .Values.mcp.port }} } ]
 ---
 apiVersion: v1
