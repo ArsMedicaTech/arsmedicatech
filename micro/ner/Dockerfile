@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS base
+FROM python:3.11-slim AS base
 
 # system deps for spaCy CPU wheels
 RUN apt-get update && \
@@ -8,10 +8,12 @@ RUN apt-get update && \
 WORKDIR /app
 COPY requirements.txt .
 
-# Install everything in one layer to enable Docker cache
-RUN pip install --no-cache-dir -r requirements.txt
+# Install everything in one layer to enable Docker cache.
+# en_core_sci_sm is pinned to a direct wheel URL above, so this bakes the
+# model into the image (no runtime download in production).
+RUN pip install --no-cache-dir -r requirements.txt && pip check
 
-# Pre-download model so the image is self-contained
+# Verify the model + pipeline are importable at build time, not first request.
 RUN python -m spacy validate
 
 COPY ./main.py ./main.py
