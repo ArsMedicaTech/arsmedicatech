@@ -1,4 +1,4 @@
-{{- define "surrealdb.sharedEnv" }}
+{{- define "surrealdb.sharedEnv" -}}
 - name: COGNITO_DOMAIN
   value: "{{ .Values.auth.cognito.cognitoDomain }}"
 - name: USER_POOL_ID
@@ -20,8 +20,6 @@
   value: "{{ .Values.redis.host }}"
 - name: REDIS_PORT
   value: "{{ .Values.redis.port }}"
-- name: SENTRY_DSN
-  value: "{{ .Values.sentry.dsn }}"
 - name: SURREALDB_NAMESPACE
   value: "{{ .Values.surrealdb.namespace }}"
 - name: SURREALDB_DATABASE
@@ -52,4 +50,33 @@
     secretKeyRef:
       name: encryption-key
       key: ENCRYPTION_KEY
+- name: MINIO_ENDPOINT
+  value: "{{ .Values.minio.endpoint }}"
+- name: MINIO_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: minio-secret
+      key: accessKey
+- name: MINIO_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      name: minio-secret
+      key: secretKey
+- name: MINIO_ENCOUNTER_RECORDINGS_BUCKET
+  value: "{{ .Values.minio.encounterRecordingsBucket }}"
+- name: KEYCLOAK_CLIENT_ID
+  value: "{{ .Values.auth.keycloak.clientId }}"
+- name: KEYCLOAK_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: keycloak-secret
+      key: clientSecret
+- name: KEYCLOAK_REALM
+  value: "{{ .Values.auth.keycloak.realm }}"
+- name: KEYCLOAK_AUTH_HOST
+  value: "{{ .Values.auth.keycloak.authHost }}"
+- name: CORS_ORIGINS
+  value: "{{ .Values.flask.corsOrigins | join "," }}"
+- name: FRONTEND_REDIRECT
+  value: "{{ .Values.flask.frontendRedirect }}"
 {{- end }}

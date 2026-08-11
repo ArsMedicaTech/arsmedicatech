@@ -20,7 +20,9 @@ spec:
           image: "{{ .Values.mcp.image.repository }}:{{ .Values.mcp.image.tag }}"
           imagePullPolicy: "{{ .Values.mcp.image.pullPolicy }}"
           env:
-            {{ include "surrealdb.sharedEnv" . | indent 10 }}
+            {{- include "surrealdb.sharedEnv" . | nindent 12 }}
+            - name: SENTRY_DSN
+              value: "{{ .Values.mcp.sentryDsn }}"
           ports: [ { containerPort: {{ .Values.mcp.port }} } ]
 ---
 apiVersion: v1
@@ -30,6 +32,7 @@ spec:
   selector: { app: mcp-server }
   ports: [ { port: 80, targetPort: {{ .Values.mcp.port }} } ]
 ---
+{{- if .Values.migrations.vec.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -37,6 +40,7 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   template:
     spec:
@@ -48,4 +52,5 @@ spec:
           image: "{{ .Values.mcp.image.repository }}:{{ .Values.mcp.image.tag }}"
           command: ["python", "lib/migrations/vec.py"]
           env:
-            {{ include "surrealdb.sharedEnv" . | indent 12 }}
+            {{- include "surrealdb.sharedEnv" . | nindent 12 }}
+{{- end }}

@@ -43,3 +43,5 @@ micro/livekit/livekit.yaml
 
 config/*.apps.googleusercontent.com.json
 config.py
+
+*.secrets.yaml

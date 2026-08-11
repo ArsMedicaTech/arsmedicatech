@@ -1,3 +1,4 @@
+{{- if .Values.micro.reasoningEngine.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,8 +15,10 @@ spec:
       labels:
         app: reasoning-engine
     spec:
+      {{- with .Values.micro.reasoningEngine.nodePool }}
       nodeSelector:
-        doks.digitalocean.com/node-pool: "{{ .Values.micro.reasoningEngine.nodePool }}"
+        doks.digitalocean.com/node-pool: {{ . | quote }}
+      {{- end }}
       imagePullSecrets:
         - name: ecr-secret
       containers:
@@ -57,3 +60,4 @@ spec:
       port: 80
       targetPort: 8080
   type: ClusterIP
+{{- end }}

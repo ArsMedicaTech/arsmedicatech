@@ -22,7 +22,7 @@ spec:
               subPath: surrealdb
       containers:
         - name: surrealdb
-          image: surrealdb/surrealdb:latest
+          image: "{{ .Values.surrealdb.image.repository }}:{{ .Values.surrealdb.image.tag }}"
           args:
             - start
             - rocksdb:/mydata/surreal.db

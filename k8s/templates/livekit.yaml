@@ -1,3 +1,4 @@
+{{- if .Values.micro.livekit.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -243,7 +244,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: livekit-cert
-  namespace: arsmedicatech
+  namespace: {{ .Values.namespace }}
 spec:
   secretName: livekit-tls
   dnsNames:
@@ -444,3 +445,4 @@ spec:
     - protocol: TCP
       port: 6379
       targetPort: 6379
+{{- end }}

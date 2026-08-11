@@ -22,6 +22,11 @@ spec:
         runAsUser: {{ .Values.security.runAsUser }}
         runAsGroup: {{ .Values.security.runAsGroup }}
         fsGroup: {{ .Values.security.fsGroup }}
+      tolerations:
+        - key: "virtual-kubelet.io/provider"
+          operator: "Equal"
+          value: "runpod"
+          effect: "NoSchedule"
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

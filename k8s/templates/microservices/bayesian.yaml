@@ -1,3 +1,4 @@
+{{- if .Values.micro.bayesian.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,8 +15,8 @@ spec:
       labels:
         app: bayesian
     spec:
-      nodeSelector:
-        doks.digitalocean.com/node-pool: "{{ .Values.micro.bayesian.nodePool }}"
+      #nodeSelector:
+      #  doks.digitalocean.com/node-pool: "{{ .Values.micro.bayesian.nodePool }}"
       imagePullSecrets:
         - name: ecr-secret
       containers:
@@ -58,3 +59,4 @@ spec:
       port: 80
       targetPort: 8080
   type: ClusterIP
+{{- end }}

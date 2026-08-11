@@ -7,17 +7,20 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-{{ .Values.namespace }}
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600" # keep websockets alive
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
     nginx.ingress.kubernetes.io/websocket-services: livekit
+
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+
+    nginx.ingress.kubernetes.io/no-tls-redirect-locations: "/.well-known/acme-challenge/"
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-      - {{ .Values.ingressName }}.{{ .Values.namespace }}.com
-      - "fhir.arsmedicatech.com"
+      - {{ .Values.host }}
       secretName: tls-{{ .Values.ingressName }}-{{ .Values.namespace }}
   rules:
-    - host: {{ .Values.ingressName }}.{{ .Values.namespace }}.com
+    - host: {{ .Values.host }}
       http:
         paths:
           - path: /api
@@ -45,6 +48,7 @@ spec:
                 name: mcp-server
                 port:
                   number: 9000
+          {{- if .Values.micro.livekit.enabled }}
           - path: /livekit
             pathType: Prefix
             backend:
@@ -56,7 +60,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: livekit
+                name: livekit-service
                 port:
                   number: 7880
           - path: /twirp
@@ -66,6 +70,8 @@ spec:
                 name: livekit
                 port:
                   number: 7880
+          {{- end }}
+          {{- if .Values.micro.ner.enabled }}
           - path: /ner
             pathType: Prefix
             backend:
@@ -73,6 +79,8 @@ spec:
                 name: micro-ner
                 port:
                   number: 80
+          {{- end }}
+          {{- if .Values.micro.reasoningEngine.enabled }}
           - path: /reasoning
             pathType: Prefix
             backend:
@@ -80,31 +88,18 @@ spec:
                 name: reasoning-engine
                 port:
                   number: 80
+          {{- end }}
+          {{- if .Values.micro.bayesian.enabled }}
           - path: /bayesian
             pathType: Prefix
             backend:
               service:
-                name: micro-bayesian
+                name: bayesian
                 port:
                   number: 80
-    - host: fhir.arsmedicatech.com
-      http:
-        paths:
-          - path: /grpc_health_probe
-            pathType: Exact
-            backend:
-              service:
-                name: fhir-sync
-                port:
-                  name: probe # 8080 plain HTTP
-          - path: /webhooks
-            pathType: Prefix
-            backend:
-              service:
-                name: fhir-sync
-                port:
-                  name: webhooks # 8081 plain HTTP
+          {{- end }}
 ---
+{{- if .Values.fhirSync.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -112,23 +107,21 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-{{ .Values.namespace }}
-    
+
     # ----- gRPC-specific annotations -----
     # Tell NGINX that ALL locations under this host use gRPC
     # (works because we expose only / – pathless – for gRPC)
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
 
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    
+
     # For long-running calls / websockets
     nginx.ingress.kubernetes.io/proxy-read-timeout:  "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout:  "3600"
+
+    acme.cert-manager.io/http01-edit-in-place: "true"
 spec:
   ingressClassName: nginx
-  tls:
-    - hosts:
-        - "fhir.arsmedicatech.com"
-      secretName: tls-{{ .Values.ingressName }}-{{ .Values.namespace }}
   rules:
     - host: fhir.arsmedicatech.com
       http:
@@ -140,3 +133,4 @@ spec:
                 name: fhir-sync
                 port:
                   name: grpc # 50051, HTTP/2, TLS
+{{- end }}

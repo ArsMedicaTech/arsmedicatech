@@ -1,0 +1,9 @@
+# Dockerfile.glitchtip-patched
+FROM glitchtip/glitchtip:6.1.4
+
+RUN sed -i \
+  's/CACHE_IS_VALKEY = "valkey" in CACHES\["default"\]\["BACKEND"\]/CACHE_IS_VALKEY = "valkey" in CACHES["default"]["BACKEND"].lower()/' \
+  /code/glitchtip/settings.py
+
+# Verify the patch applied
+RUN grep "CACHE_IS_VALKEY" /code/glitchtip/settings.py
